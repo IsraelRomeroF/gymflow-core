@@ -1,0 +1,91 @@
+{
+  "name": "@gymflow/core",
+  "version": "0.1.0",
+  "description": "Dominio puro de GymFlow: dinero, calendario, permisos, membresías, libro y caja. Sin I/O.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./vocabulario": {
+      "types": "./dist/vocabulario.d.ts",
+      "default": "./dist/vocabulario.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./calendario": {
+      "types": "./dist/calendario.d.ts",
+      "default": "./dist/calendario.js"
+    },
+    "./retention": {
+      "types": "./dist/retention.d.ts",
+      "default": "./dist/retention.js"
+    },
+    "./captacion": {
+      "types": "./dist/captacion.d.ts",
+      "default": "./dist/captacion.js"
+    },
+    "./privacidad": {
+      "types": "./dist/privacidad.d.ts",
+      "default": "./dist/privacidad.js"
+    },
+    "./motivos": {
+      "types": "./dist/motivos.d.ts",
+      "default": "./dist/motivos.js"
+    },
+    "./secciones": {
+      "types": "./dist/secciones.d.ts",
+      "default": "./dist/secciones.js"
+    },
+    "./modules": {
+      "types": "./dist/modules.d.ts",
+      "default": "./dist/modules.js"
+    },
+    "./permissions": {
+      "types": "./dist/permissions.d.ts",
+      "default": "./dist/permissions.js"
+    },
+    "./roles": {
+      "types": "./dist/roles.d.ts",
+      "default": "./dist/roles.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "packageManager": "pnpm@10.26.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src test",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.19.0",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.11"
+  }
+}

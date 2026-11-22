@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+# El pipeline RÁPIDO del proyecto: el dominio no toca base de datos, así que
+# estas 251 pruebas corren en menos de un minuto. Es la primera señal de que
+# algo se rompió, y por eso no debe depender de nada externo.
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.26.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+      # El dominio es PURO. Si aquí aparece una dependencia de I/O, la promesa
+      # de ADR-015 —misma política en la nube y en el gateway— deja de valer.
+      - name: El dominio no depende de I/O
+        run: |
+          if grep -qE '"(@gymflow/db|@prisma/client|fastify|pg|next)"' package.json; then
+            echo "El dominio no puede depender de I/O"; exit 1
+          fi

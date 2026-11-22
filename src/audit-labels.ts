@@ -1,0 +1,475 @@
+import { formatMoney, money } from './money.js';
+
+/**
+ * La bitácora en palabras (DP-05; auditoría 8, 20-07 y 20-10, bloque 1.11).
+ *
+ * Una frase por acción, en el núcleo, para que el servidor, el panel y el CSV
+ * digan lo mismo y una acción nueva sin frase se note en las pruebas y no en
+ * la pantalla del dueño. La frase dice A QUIÉN y CUÁNTO con huecos explícitos
+ * (nada de pegar « de Ana» por cómo termina la frase):
+ *
+ *  - `{m}`            el importe: « de $650.00», o nada si el asiento no lo trae.
+ *  - `{socio}`        el socio como complemento: «Ana López», o «un socio».
+ *                     Con otro texto de respaldo: `{socio|un exsocio}`.
+ *  - `{a socio}`      con su preposición (a, de, para, con): « a Ana López», o nada.
+ *  - `{persona}`      la persona del personal sobre la que se actuó, o «alguien»
+ *                     (`{persona|su gerente}`, `{de persona}` igual que el socio).
+ *
+ * `auditPhrase` arma la frase completa con los datos del asiento.
+ */
+export const AUDIT_LABELS: Readonly<Record<string, string>> = {
+  // Dinero
+  'payments.record': 'registró un cobro{m}{a socio}',
+  'payments.reverse': 'revirtió un pago{m}{de socio}',
+  'payment.refund': 'hizo un reembolso{m}{a socio}',
+  'payments.refund.ledger': 'asentó un reembolso{m}{a socio}',
+  'payments.chargeback': 'registró un contracargo{m}{de socio}',
+  'payments.chargeback.needs_review': 'dejó un contracargo por revisar{m}{de socio}',
+  'payment.refund.unrecorded': 'dejó un reembolso sin asentar{m}{de socio}',
+  'payment.attempt.resolve': 'resolvió un cobro en línea pendiente{de socio}',
+  'payment.method.add': 'guardó una tarjeta{de socio}',
+  'payment.method.revoke': 'quitó una tarjeta{de socio}',
+  // Solo lo escribe el cargo fuera del catálogo (28-05): por eso es «Para revisar».
+  'billing.charge.create': 'creó un cargo fuera del catálogo{m}{a socio}',
+  'billing.charge.void': 'anuló un cargo{m}{de socio}',
+  'billing.waiver.apply': 'condonó una deuda{m}{a socio}',
+  'billing.discount.apply': 'aplicó un descuento{m}{a socio}',
+  'billing.credit.apply': 'aplicó saldo a favor{m}{de socio}',
+  'billing.settlement.deferred': 'difirió un cobro{de socio}',
+  'cash.session.open': 'abrió caja',
+  'cash.session.close': 'hizo el corte de caja',
+  'cash.withdraw': 'retiró efectivo de la caja{m}',
+  'cash.movement.create': 'registró un movimiento de caja{m}',
+  'cash.register.create': 'dio de alta una caja',
+  'cash.register.update': 'cambió una caja',
+  'pos.sale.create': 'registró una venta de mostrador{m}{a socio}',
+  'pos.sale.void': 'anuló una venta de mostrador{m}{a socio}',
+  'pos.product.create': 'dio de alta un producto',
+  'pos.product.update': 'cambió un producto',
+  'pos.inventory.adjust': 'ajustó inventario',
+  'expense.create': 'registró un gasto fijo{m}',
+  'expense.void': 'anuló un gasto fijo{m}',
+  // Membresías y paquetes
+  'membership.sale': 'vendió una membresía{m}{a socio}',
+  'membership.create': 'creó una membresía{para socio}',
+  'membership.plan_change.billed': 'cambió el plan{de socio}',
+  // Transiciones de la membresía (`membership.<trigger>`): las escribe el motor, a menudo el cierre diario.
+  'membership.activate': 'activó la membresía{de socio}',
+  'membership.cancel': 'canceló la membresía{de socio}',
+  'membership.charge_overdue': 'marcó con pago atrasado la membresía{de socio}',
+  'membership.debt_forgiven': 'condonó el adeudo de la membresía{de socio}',
+  'membership.debt_resumed': 'reanudó el adeudo de la membresía{de socio}',
+  'membership.freeze': 'congeló la membresía{de socio}',
+  'membership.freeze_limit_exceeded': 'terminó un congelamiento{de socio} que pasó del tope',
+  'membership.grace_expired': 'suspendió la membresía{de socio} al vencer la gracia',
+  'membership.payment_settled': 'reactivó la membresía{de socio} al pagar',
+  'membership.period_ended': 'venció la membresía{de socio}',
+  'membership.plan_changed': 'cambió el plan de la membresía{de socio}',
+  'membership.recovery_window_expired': 'dio por terminada la membresía suspendida{de socio}',
+  'membership.renew': 'renovó la membresía{de socio}',
+  'membership.sin_renovar': 'no pudo renovar la membresía{de socio}: la cuota no se emitió',
+  'membership.start_trial': 'inició una prueba{de socio}',
+  'membership.trial_converted': 'convirtió en membresía la prueba{de socio}',
+  'membership.trial_failed': 'terminó sin convertir la prueba{de socio}',
+  'membership.unfreeze': 'descongeló la membresía{de socio}',
+  'visitpack.sell': 'vendió un paquete de visitas{m}{a socio}',
+  'daypass.sell': 'vendió un pase del día{m}{a socio}',
+  'visitpack.adjust': 'ajustó las visitas de un paquete{de socio}',
+  'visitpack.expire': 'venció un paquete{de socio}',
+  // Socios
+  'member.create': 'dio de alta a {socio}',
+  'member.update': 'editó los datos de {socio}',
+  'member.archive': 'dio de baja a {socio}',
+  'member.reactivate': 'reactivó a {socio|un exsocio}',
+  'member.anonymize': 'anonimizó a {socio} (ARCO)',
+  'member.export': 'exportó los datos de {socio} (ARCO)',
+  'member.export.self': 'descargó sus datos desde el portal',
+  'health.read': 'leyó las notas de salud{de socio}',
+  'consent.record': 'registró un consentimiento{de socio}',
+  'consent.revoke': 'revocó un consentimiento{de socio}',
+  'consent.document.publish': 'publicó un texto de consentimiento',
+  'consent.document.retire': 'retiró un texto de consentimiento',
+  // Borradores de los textos (1.10): corregir y borrar lo que todavía no firma nadie.
+  'consent.document.update': 'corrigió el borrador de un texto de consentimiento',
+  'consent.document.delete': 'borró el borrador de un texto de consentimiento',
+  'privacy.request.open': 'registró una solicitud ARCO{de socio}',
+  'privacy.request.resolve': 'resolvió una solicitud ARCO{de socio}',
+  // El ciclo ARCO completo (1.10): acreditar la identidad y hacer efectivo lo resuelto.
+  'privacy.request.identity': 'acreditó la identidad en una solicitud ARCO{de socio}',
+  'privacy.request.effect': 'hizo efectiva una solicitud ARCO{de socio}',
+  'portal.invite.issue': 'invitó{a socio} al portal',
+  'portal.sessions.revoke': 'cerró el portal en los teléfonos de {socio}',
+  'intake.approve': 'aprobó el alta digital{de socio}',
+  'intake.reject': 'rechazó un alta digital',
+  'intake.link': 'vinculó un alta digital{con socio}',
+  'members.import.stage': 'cargó un archivo de socios para revisar',
+  'members.import.apply': 'aplicó una importación de socios',
+  'members.import.cancel': 'canceló una importación de socios',
+  // Captación (2.4): correcciones guardadas sin aprobar, y el interesado de punta a punta.
+  'intake.correct': 'guardó correcciones en un alta digital sin aprobarla',
+  'prospect.create': 'registró a un interesado',
+  'prospect.close': 'cerró a un interesado que no se inscribió',
+  'prospect.reopen': 'reabrió a un interesado',
+  'prospect.sources.update': 'cambió la lista de «¿Cómo se enteró?»',
+  'prospect.update': 'actualizó un prospecto',
+  'prospect.convert': 'convirtió un prospecto en socio',
+  'prospect.follow_up': 'registró un contacto con un prospecto',
+  'member.follow_up': 'registró un contacto con {socio|un socio en riesgo}',
+  // Bandeja de salida (2.9)
+  'member.message.send': 'mandó un mensaje por WhatsApp{a socio}',
+  'member.message.dismiss': 'decidió no mandar un mensaje{a socio}',
+  'member.message.reopen': 'regresó a pendientes un mensaje{a socio}',
+  // Acceso
+  'access.manual_grant': 'dejó pasar por excepción{a socio}',
+  'access.manual_entry': 'registró una entrada por el mostrador{de socio} (excepción)',
+  'access.biometric.enroll': 'registró la biometría{de socio}',
+  'access.biometric.revoke': 'revocó la biometría{de socio}',
+  'access.biometric.template_deleted': 'confirmó el borrado de una plantilla biométrica{de socio}',
+  'access.credential.issue': 'emitió una credencial{para socio}',
+  'access.credential.revoke': 'revocó una credencial{de socio}',
+  'access.gateway.create': 'dio de alta un equipo de acceso',
+  'access.policy.version_mismatch': 'detectó un equipo con política desactualizada',
+  // Clases y rutinas
+  'class.type.create': 'creó una clase',
+  'class.type.update': 'cambió una clase',
+  'class.type.price': 'cambió el precio de una clase',
+  'class.type.retire': 'retiró una clase',
+  'class.template.create': 'armó un horario de clases',
+  'class.template.retire': 'retiró un horario de clases',
+  'class.schedule.cancel': 'canceló una sesión',
+  'class.booking.override_cancel': 'canceló fuera de tiempo una reserva{de socio}',
+  'class.booking.cancel': 'quitó una reserva de clase{de socio}',
+  // Horario flexible y reglas de reserva (bloque 2.5).
+  'class.template.update': 'cambió un horario de clases',
+  'class.schedule.create': 'agregó una sesión única',
+  'class.schedule.capacity': 'cambió el cupo de una sesión',
+  'class.pause.create': 'pausó el horario de clases por fechas',
+  'class.pause.end': 'quitó una pausa del horario de clases',
+  'class.settings.update': 'cambió las reglas de reserva de clases',
+  'training.exercise.create': 'agregó un ejercicio',
+  'training.routine.create': 'creó una rutina',
+  'training.routine.update': 'cambió una rutina',
+  'training.routine.archive': 'archivó una rutina',
+  'training.routine.assign': 'asignó una rutina{a socio}',
+  'training.routine.end': 'terminó una rutina{de socio}',
+  'training.routine.personalize': 'personalizó la rutina{de socio}',
+  // Catálogo y sucursales
+  'catalog.plan.create': 'creó un plan',
+  'catalog.plan.update': 'cambió un plan',
+  'branch.create': 'abrió una sucursal',
+  'branch.update': 'cambió una sucursal',
+  // Cerrar y reabrir una sede con su motivo (1.14): hoy la API asienta `branch.update`.
+  'branch.close': 'cerró una sucursal',
+  'branch.reopen': 'reabrió una sucursal',
+  // Personal y seguridad
+  'staff.create': 'dio de alta en el personal a {persona|una persona}',
+  'staff.update': 'editó los datos de {persona|una persona del personal}',
+  'staff.deactivate': 'dio de baja del personal a {persona|una persona}',
+  // Reactivar da una temporal nueva (1.14): hoy la API asienta `staff.update` + `staff.password_reset`.
+  'staff.reactivate': 'reactivó a {persona|una persona del personal} con una contraseña temporal nueva',
+  'staff.role': 'cambió el puesto de {persona}',
+  'staff.password_reset': 'restableció la contraseña de {persona}',
+  'staff.rescue': 'rescató la cuenta de {persona|su gerente}',
+  'staff.unlock': 'cambió las secciones liberadas a {persona}',
+  'staff.permissions': 'ajustó los permisos de {persona} sobre su puesto',
+  'member.coach': 'asignó o quitó el coach de {socio}',
+  'member.coach.handover': 'pasó a otro coach los socios de {persona|una persona}',
+  'class.template.coach': 'cambió quién imparte un horario de clases',
+  'class.schedule.coach': 'cambió quién imparte una clase',
+  'auth.password_change': 'cambió su contraseña',
+  'mfa.enroll': 'activó la verificación en dos pasos',
+  'session.revoke_all': 'cerró todas sus sesiones',
+  // «Cerrar las demás» desde «Mis sesiones» y la consola de plataforma (24-14, 24-19; bloque 1.12).
+  'session.revoke_others': 'cerró su sesión en los demás equipos',
+  'settings.approval_policy': 'cambió la política de firmas',
+  'settings.module.enable': 'encendió un módulo',
+  'settings.module.disable': 'apagó un módulo',
+  'settings.module.branch.enable': 'encendió un módulo en una sucursal',
+  'settings.module.branch.disable': 'apagó un módulo en una sucursal',
+  'settings.setup.update': 'cambió un ajuste del arranque',
+  'settings.privacy.update': 'cambió el plazo de supresión de exsocios',
+  'approval.self': 'se autorizó a sí misma{m}',
+  'approval.remote.request': 'pidió una autorización al teléfono{m}',
+  'approval.remote.approve': 'autorizó desde su teléfono{m}',
+  'approval.remote.reject': 'rechazó desde su teléfono{m}',
+  // Lo que no se firmó también queda (20-02, 29-04): firmar y fallar en el
+  // mostrador, cancelar, vencer y la pausa de la escalera de fallos (24-11).
+  'approval.local.issue': 'obtuvo una firma{m} en el mostrador',
+  'approval.local.fail': 'falló una firma{m} en el mostrador',
+  'approval.remote.fail': 'tecleó mal su contraseña al autorizar desde su teléfono',
+  'approval.remote.cancel': 'canceló una solicitud de autorización{m}',
+  'approval.remote.expire': 'dio por vencida, sin respuesta, una solicitud de autorización{m}',
+  'approval.pause': 'pausó las firmas de {persona|una persona} por intentos fallidos',
+  'audit.export': 'exportó la bitácora',
+  'report.month.close': 'cerró el mes',
+  // Plataforma (GymFlow sobre la marca)
+  'platform.organization.create': 'GymFlow dio de alta la marca',
+  'platform.organization.update': 'GymFlow editó los datos de la marca',
+  'platform.service.activate': 'GymFlow liberó el software',
+  'platform.service.suspend': 'GymFlow suspendió el software',
+  'platform.service.resume': 'GymFlow reanudó el servicio',
+  'platform.module.grant': 'GymFlow contrató un módulo',
+  'platform.module.revoke': 'GymFlow retiró un módulo',
+  'platform.plan.assign': 'GymFlow asignó el plan contratado',
+  'platform.user.create': 'GymFlow dio una cuenta{a persona}',
+  'platform.user.activate': 'GymFlow reactivó la cuenta de {persona|una persona}',
+  'platform.user.suspend': 'GymFlow suspendió la cuenta de {persona|una persona}',
+  'platform.invoices.issue_month': 'GymFlow emitió las facturas del mes',
+  'system.daily_run': 'corrió el cierre diario',
+  'platform.user.sections': 'GymFlow cambió lo que ve {persona|el dueño}',
+  'platform.password_reset': 'GymFlow restableció la contraseña de {persona|una persona}',
+  'platform.invoice.issue': 'GymFlow emitió la factura del mes{m}',
+  'platform.invoice.pay': 'GymFlow registró el pago de una factura{m}',
+  'platform.invoice.void': 'GymFlow anuló una factura',
+  // Un pago registrado por error se deshace con motivo; la factura vuelve a deber ese importe (23-07, bloque 1.13).
+  'platform.invoice.payment.undo': 'GymFlow deshizo un pago de una factura{m}',
+  // Lo que la plataforma hace en su propia consola (24-19, 23-09): no toca a una
+  // marca, así que solo vive en la cadena de plataforma. Quien lo hizo va aparte.
+  'platform.console.login': 'entró a la consola de GymFlow',
+  'platform.console.logout': 'salió de la consola de GymFlow',
+  'platform.console.reauth': 'reconfirmó su contraseña en la consola',
+  'platform.console.password_change': 'cambió su contraseña de la consola',
+  'platform.console.sessions_close_others': 'cerró sus otras sesiones de la consola',
+  'platform.catalog.plan.create': 'creó un plan de GymFlow{m}',
+  'platform.catalog.plan.update': 'cambió un plan de GymFlow',
+  'platform.catalog.price.update': 'cambió los precios de GymFlow',
+};
+
+/**
+ * Categorías de la bitácora: un prefijo terminado en punto abarca a todas las
+ * acciones que empiezan así.
+ *
+ * `sensibles` es «PARA REVISAR»: lo que la dueña mira cada día. Desde la
+ * auditoría 8 (20-06, bloque 1.11) la regla es **el dinero que sale, el poder
+ * que cambia y las excepciones**, y nada de rutina:
+ *
+ *  - Dinero que sale: reembolsos, reversas, contracargos, condonaciones, cargos
+ *    y ventas anulados, cargos fuera del catálogo, retiros de caja, gastos
+ *    anulados, ajustes de visitas, correcciones de membresía y bajas de socios.
+ *  - Poder que cambia: puesto, permisos, secciones, contraseñas restablecidas,
+ *    rescates, política de firmas, módulos, precios (planes y clases), cierre
+ *    de mes, importaciones aplicadas.
+ *  - Datos: anonimizar, exportar, solicitudes ARCO y lectura de notas de salud.
+ *  - Excepciones: firmas falladas con contraseña ajena y firmas en pausa.
+ *
+ * Lo que aquí aparece SIEMPRE es para revisar. Lo que depende del asiento
+ * (el corte solo con diferencia, el descuento solo si pidió firma, la venta
+ * solo con fecha anterior) está en `AUDIT_REVIEW_CONDITIONAL` y lo decide
+ * `auditNeedsReview`. Las entradas por excepción ya no entran una por una: se
+ * resumen por persona y día (`access.manual_*`, ver `AUDIT_SUMMARIZED`).
+ */
+export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
+  dinero: ['payments.', 'payment.', 'billing.', 'cash.', 'pos.sale.', 'visitpack.', 'daypass.', 'expense.', 'report.', 'membership.sale', 'membership.plan_change.billed'],
+  sensibles: [
+    'payments.reverse', 'payment.refund', 'payments.refund.ledger', 'payment.refund.unrecorded', 'payments.chargeback', 'payments.chargeback.needs_review',
+    'billing.waiver.apply', 'billing.charge.void', 'billing.charge.create', 'cash.withdraw', 'pos.sale.void', 'expense.void', 'visitpack.adjust',
+    'membership.override.', 'member.archive', 'approval.self',
+    'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'member.anonymize', 'member.export', 'health.read',
+    'staff.password_reset', 'staff.reactivate', 'staff.role', 'staff.rescue', 'staff.unlock', 'staff.permissions', 'settings.approval_policy', 'settings.module.',
+    'members.import.apply', 'privacy.request.', 'report.month.close',
+    // Alguien probó una contraseña ajena para firmar, o la escalera pausó una firma (20-02, 24-11).
+    'approval.local.fail', 'approval.pause',
+  ],
+  socios: ['member.', 'members.import.', 'membership.', 'intake.', 'prospect.', 'consent.', 'privacy.', 'portal.', 'health.read'],
+  acceso: ['access.'],
+  personal: ['staff.', 'auth.', 'mfa.', 'session.', 'settings.', 'approval.', 'audit.export', 'system.'],
+  clases: ['class.', 'training.'],
+  catalogo: ['catalog.', 'branch.', 'pos.product.', 'pos.inventory.'],
+  plataforma: ['platform.'],
+};
+
+/** Lo mínimo de un asiento para armar su frase y decidir si es para revisar. */
+export type AuditEntryData = {
+  readonly action: string;
+  readonly beforeState?: unknown;
+  readonly afterState?: unknown;
+  readonly approvedByUserId?: string | null | undefined;
+};
+
+const campo = (estado: unknown, llave: string): unknown =>
+  estado && typeof estado === 'object' && !Array.isArray(estado) ? (estado as Record<string, unknown>)[llave] : undefined;
+const centavos = (v: unknown): bigint | null => (typeof v === 'string' && /^-?\d+$/.test(v) ? BigInt(v) : typeof v === 'number' && Number.isSafeInteger(v) ? BigInt(v) : null);
+
+/**
+ * Para revisar SEGÚN EL ASIENTO (20-06). Cada regla dice por qué:
+ *  - el corte de caja, solo si tuvo diferencia (el asiento trae `varianceCents`);
+ *  - el descuento, solo si pasó del tope de quien lo aplicó y pidió firma;
+ *  - la venta de membresía, solo si se fechó hacia atrás (`backdated`).
+ * La consulta de la API traduce estas mismas tres reglas a SQL; una prueba del
+ * backend comprueba que las dos digan lo mismo.
+ */
+export const AUDIT_REVIEW_CONDITIONAL: Readonly<Record<string, { readonly why: string; readonly test: (e: AuditEntryData) => boolean }>> = {
+  'cash.session.close': {
+    why: 'El corte tuvo diferencia',
+    test: (e) => { const v = centavos(campo(e.afterState, 'varianceCents')); return v !== null && v !== 0n; },
+  },
+  'billing.discount.apply': {
+    why: 'El descuento pasó del tope y pidió firma',
+    test: (e) => !!e.approvedByUserId,
+  },
+  'membership.sale': {
+    why: 'La venta se fechó hacia atrás',
+    test: (e) => campo(e.afterState, 'backdated') === true,
+  },
+};
+
+/**
+ * Lo que NO va una por una a «Para revisar» sino resumido por persona y día
+ * (20-06): cada «déjalo pasar» es rutina; muchas de la misma persona, no.
+ */
+export const AUDIT_SUMMARIZED: readonly string[] = ['access.manual_grant', 'access.manual_entry'];
+
+const coincide = (prefijos: readonly string[], action: string): boolean =>
+  prefijos.some((p) => (p.endsWith('.') ? action.startsWith(p) : action === p));
+
+/** ¿Este asiento es «Para revisar»? La regla completa: la lista fija más las tres condicionales. */
+export function auditNeedsReview(e: AuditEntryData): boolean {
+  if (coincide(AUDIT_CATEGORIES.sensibles!, e.action)) return true;
+  return AUDIT_REVIEW_CONDITIONAL[e.action]?.test(e) ?? false;
+}
+
+/** Por qué un asiento condicional entró a «Para revisar» (para el aviso de la pantalla), o null. */
+export function auditReviewReason(e: AuditEntryData): string | null {
+  const regla = AUDIT_REVIEW_CONDITIONAL[e.action];
+  return regla && regla.test(e) ? regla.why : null;
+}
+
+/** Cómo se le dice a cada corrección manual de membresía (`membership.override.<clave>`). */
+const CORRECCION: Readonly<Record<string, string>> = {
+  activate: 'activarla', 'change-plan': 'cambiar el plan', create: 'crearla', reactivate: 'reactivarla', renew: 'renovarla',
+  extend: 'extender la vigencia', cancel: 'cancelarla', freeze: 'congelarla', unfreeze: 'descongelarla',
+};
+
+/** Prefijos que no tienen frase propia pero sí una familia. */
+const FAMILIAS: ReadonlyArray<[string, (action: string) => string]> = [
+  ['membership.override.', (a) => { const c = a.split('.').pop()!; return `corrigió a mano la membresía{de socio} (${CORRECCION[c] ?? c.replace(/[-_]/g, ' ')})`; }],
+  ['membership.', (a) => `membresía{de socio}: ${a.split('.').slice(1).join(' ').replace(/_/g, ' ')}`],
+];
+
+/** Lo que llena los huecos de una frase. Los importes llegan ya formateados ("$650.00"). */
+export type AuditPhraseData = {
+  amount?: string | null | undefined;
+  /** Nombre del socio al que toca el asiento. */
+  member?: string | null | undefined;
+  /** Nombre de la persona del personal sobre la que se actuó. */
+  person?: string | null | undefined;
+};
+
+const HUECO = /\{(?:(a|de|para|con) )?(socio|persona)(?:\|([^}]+))?\}/g;
+
+function llenar(plantilla: string, d: AuditPhraseData): string {
+  return plantilla
+    .replace('{m}', d.amount ? ` de ${d.amount}` : '')
+    .replace(HUECO, (_t, prep: string | undefined, quien: string, respaldo: string | undefined) => {
+      const nombre = (quien === 'socio' ? d.member : d.person)?.trim();
+      if (prep) return nombre ? ` ${prep} ${nombre}` : '';
+      return nombre || respaldo || (quien === 'socio' ? 'un socio' : 'alguien');
+    });
+}
+
+/**
+ * La frase de una acción con sus huecos llenos. Sin importe, `{m}` desaparece;
+ * sin nombre, `{socio}` dice «un socio» y `{a socio}` desaparece.
+ */
+export function auditLabel(action: string, opts: AuditPhraseData = {}): string {
+  const base = AUDIT_LABELS[action];
+  if (base) return llenar(base, opts);
+  const familia = FAMILIAS.find(([p]) => action.startsWith(p));
+  if (familia) return llenar(familia[1](action), opts);
+  return action.replace(/[._]/g, ' ');
+}
+
+/** ¿Tiene frase propia o de familia? Lo usan las pruebas para no dejar claves crudas. */
+export function hasAuditLabel(action: string): boolean {
+  return action in AUDIT_LABELS || FAMILIAS.some(([p]) => action.startsWith(p));
+}
+
+/** ¿La frase de esta acción nombra al socio (o a la persona) por sí misma? */
+export function auditLabelNames(action: string, quien: 'socio' | 'persona'): boolean {
+  const base = AUDIT_LABELS[action] ?? FAMILIAS.find(([p]) => action.startsWith(p))?.[1](action) ?? '';
+  return [...base.matchAll(HUECO)].some((m) => m[2] === quien);
+}
+
+/** En qué campo del estado viene el importe cuando no es `amountCents` ni `totalCents`. */
+const IMPORTE_EN: Readonly<Record<string, string>> = {
+  'billing.credit.apply': 'appliedCents',
+};
+
+/**
+ * El importe de un asiento, en centavos y sin signo, o null si no lo trae.
+ * Descuentos y condonaciones no guardan «cuánto» sino el ajustado antes y
+ * después: el importe es la diferencia.
+ */
+export function auditAmountCents(e: AuditEntryData): bigint | null {
+  const abs = (v: bigint) => (v < 0n ? -v : v);
+  if (e.action === 'billing.discount.apply' || e.action === 'billing.waiver.apply') {
+    const antes = centavos(campo(e.beforeState, 'adjustedCents'));
+    const despues = centavos(campo(e.afterState, 'adjustedCents'));
+    if (antes !== null && despues !== null && antes !== despues) return abs(despues - antes);
+  }
+  const llaves = [IMPORTE_EN[e.action], 'amountCents', 'totalCents'].filter((k): k is string => !!k);
+  for (const estado of [e.afterState, e.beforeState]) {
+    for (const k of llaves) {
+      const v = centavos(campo(estado, k));
+      if (v !== null) return abs(v);
+    }
+  }
+  return null;
+}
+
+const pesos = (c: bigint): string => formatMoney(money(c));
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'] as const;
+
+/**
+ * LA FRASE COMPLETA DE UN ASIENTO (20-07): la arma el núcleo con los datos del
+ * propio asiento (importe, diferencia del corte, nombre del módulo) y los
+ * nombres que quien llama ya resolvió (socio, persona). Ninguna pantalla
+ * vuelve a componerla.
+ */
+export function auditPhrase(e: AuditEntryData, nombres: { member?: string | null | undefined; person?: string | null | undefined } = {}): string {
+  const importe = auditAmountCents(e);
+  const datos: AuditPhraseData = { amount: importe === null ? null : pesos(importe), member: nombres.member, person: nombres.person };
+  const texto = (k: string): string | null => { const v = campo(e.afterState, k); return typeof v === 'string' && v.trim() ? v.trim() : null; };
+
+  // El corte dice su diferencia: sin ella no es para revisar (20-06).
+  if (e.action === 'cash.session.close') {
+    const v = centavos(campo(e.afterState, 'varianceCents'));
+    if (v === null) return llenar(AUDIT_LABELS[e.action]!, datos);
+    return v === 0n ? 'hizo el corte de caja, sin diferencia' : `hizo el corte de caja con un ${v < 0n ? 'faltante' : 'sobrante'} de ${pesos(v < 0n ? -v : v)}`;
+  }
+  if (e.action === 'cash.session.open') {
+    const fondo = centavos(campo(e.afterState, 'openingFloatCents'));
+    return fondo === null ? llenar(AUDIT_LABELS[e.action]!, datos) : `abrió caja con ${pesos(fondo)} de fondo`;
+  }
+  // El cierre dice de qué mes (`afterState.month`, "2026-10").
+  if (e.action === 'report.month.close') {
+    const mes = /^(\d{4})-(\d{2})$/.exec(texto('month') ?? '');
+    const nombre = mes ? MESES[Number(mes[2]) - 1] : undefined;
+    return nombre ? `cerró el mes de ${nombre} de ${mes![1]}` : llenar(AUDIT_LABELS[e.action]!, datos);
+  }
+  // Módulos (ADR-036): el nombre viaja en el asiento.
+  const modulo = /^settings\.module\.(branch\.)?(enable|disable)$/.exec(e.action);
+  if (modulo) {
+    const nombre = texto('name');
+    if (!nombre) return llenar(AUDIT_LABELS[e.action]!, datos);
+    const tambien = campo(e.afterState, 'alsoEnabled');
+    const extra = Array.isArray(tambien) && tambien.length > 0 && tambien.every((x) => typeof x === 'string') ? ` (y también ${tambien.join(', ')})` : '';
+    const sede = modulo[1] ? texto('branchName') : null;
+    return `${modulo[2] === 'enable' ? 'encendió' : 'apagó'} el módulo ${nombre}${sede ? ` en ${sede}` : modulo[1] ? ' en una sucursal' : ''}${extra}`;
+  }
+  // La firma a distancia dice QUÉ se pidió (20-05): el resumen viaja en el asiento.
+  if (e.action.startsWith('approval.remote.')) {
+    const resumen = texto('summary');
+    if (resumen) return `${auditLabel(e.action, datos)} · ${resumen}`;
+  }
+  return auditLabel(e.action, datos);
+}
+
+/** La categoría de una acción, si cae en alguna (sin contar `sensibles`, que es transversal). */
+export function auditCategoryOf(action: string): string | null {
+  for (const [cat, prefijos] of Object.entries(AUDIT_CATEGORIES)) {
+    if (cat === 'sensibles') continue;
+    if (coincide(prefijos, action)) return cat;
+  }
+  return null;
+}
