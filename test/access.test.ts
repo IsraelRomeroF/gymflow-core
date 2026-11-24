@@ -367,7 +367,8 @@ describe('paquete de visitas: estado, no solo saldo', () => {
 
   it('la versión de política sube de MAYOR: un gateway viejo abriría de más', () => {
     // Es el caso exacto para el que existe el handshake.
-    expect(ACCESS_POLICY_VERSION.split('.')[0]).toBe('3');
+    // Desde la 4.0.0 (bloque 3.3) el salto mayor es otro; el de la 3 sigue contando.
+    expect(Number(ACCESS_POLICY_VERSION.split('.')[0])).toBeGreaterThanOrEqual(3);
     expect(checkPolicyVersion('2.0.0', ACCESS_POLICY_VERSION).ok).toBe(false);
   });
 });

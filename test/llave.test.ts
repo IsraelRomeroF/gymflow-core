@@ -60,7 +60,8 @@ describe('las secciones con efecto para cada puesto (17-05)', () => {
     // Las mismas que `puestos` en el registro del panel (`modules/registro.test.ts` las compara).
     expect(effectiveSections('RECEPTION')).toEqual(['caja', 'pos', 'retencion', 'planes', 'consentimientos']);
     expect(effectiveSections('COACH')).toEqual(['planes']);
-    expect(effectiveSections('OWNER')).toEqual(['caja', 'tablero', 'movimientos', 'planes', 'personal', 'sucursales', 'modulos', 'bitacora', 'biometria']);
+    // Fase 3 · 3.7 (D-25): la dueña lee los textos legales y firma el aviso, así que Textos de consentimiento también es suya.
+    expect(effectiveSections('OWNER')).toEqual(['caja', 'tablero', 'movimientos', 'planes', 'personal', 'sucursales', 'modulos', 'bitacora', 'biometria', 'consentimientos']);
     expect(effectiveSections('MANAGER')).toEqual(LOCKABLE_SECTIONS.map((s) => s.key));
     expect(effectiveSections('NADIE')).toEqual([]);
   });

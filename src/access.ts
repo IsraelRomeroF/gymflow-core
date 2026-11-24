@@ -1,5 +1,5 @@
 import { grantsAccess, type MembershipStatus, type VisitPackStatus } from './membership.js';
-import { AVISO_PASE_DEL_DIA } from './vocabulario.js';
+import { AVISO_PASE_DEL_DIA, AVISO_PASE_DE_PRUEBA } from './vocabulario.js';
 
 /**
  * Motor de políticas de acceso (§21, ADR-015).
@@ -31,8 +31,20 @@ import { AVISO_PASE_DEL_DIA } from './vocabulario.js';
  * lo habilite pero pagó su pase de hoy entra en la sede del pase. Es MENOR:
  * no cierra nada que antes abriera; un gateway en `3.1` solo deja de reconocer
  * el pase (lo rechaza y recepción lo deja pasar).
+ *
+ * `4.0.0` — fase 3 de la auditoría 8, bloque 3.3. Tres reglas, y es MAYOR
+ * porque dos de ellas cambian quién entra y qué se descuenta:
+ *   · D-07 · UNA ENTRADA POR DÍA Y SUCURSAL. Quien ya entró hoy en esta sede
+ *     vuelve a pasar, pero la segunda vez es una REENTRADA: se registra, no
+ *     cuenta otra asistencia y no descuenta otra visita del paquete. Un
+ *     gateway en `3.x` seguiría descontando una visita por cada paso.
+ *   · D-06 · SIN ROSTRO NO SE ENTRA POR EL MOSTRADOR, salvo que la gerencia
+ *     autorice esa visita. Solo donde el gimnasio encendió la regla y la sede
+ *     usa biometría; quien llama lo dice en `biometricGate`.
+ *   · D-08 · EL PASE DE PRUEBA: gratis, uno por persona, vale el día y la
+ *     sede donde se dio.
  */
-export const ACCESS_POLICY_VERSION = '3.2.0';
+export const ACCESS_POLICY_VERSION = '4.0.0';
 
 export type AccessOutcome = 'GRANTED' | 'DENIED';
 
@@ -59,7 +71,9 @@ export type DenialReason =
   | 'VISIT_PACK_UNPAID'
   | 'CREDENTIAL_REVOKED'
   | 'CREDENTIAL_EXPIRED'
-  | 'DUPLICATE_SCAN';
+  | 'DUPLICATE_SCAN'
+  /** D-06: su plan lo dejaría pasar, pero no tiene rostro registrado y nadie de la gerencia autorizó esta visita. */
+  | 'BIOMETRIC_REQUIRED';
 
 export type CredentialKind = 'QR' | 'RFID' | 'PIN' | 'FINGERPRINT' | 'FACE' | 'MANUAL';
 
@@ -112,6 +126,12 @@ export type AccessSubject = {
    * hoy y está pagado; aquí se comprueba la sede.
    */
   readonly dayPass?: { readonly branchId: string } | null;
+  /**
+   * PASE DE PRUEBA (D-08): gratis, uno por persona (por celular). Vale el día
+   * de operación y la sede donde se dio. Quien arma el sujeto solo lo pone si
+   * el pase es de hoy; aquí se comprueba la sede. No es dinero ni membresía.
+   */
+  readonly trialPass?: { readonly branchId: string } | null;
 };
 
 
@@ -132,10 +152,23 @@ export type AccessSettings = {
    * nombre y motivo (principio 8 de la visión): la puerta no decide, informa.
    */
   readonly allowAccessWhilePastDue: boolean;
+  /**
+   * D-06 (fase 3, bloque 3.3): ¿nadie entra sin su rostro, salvo que la
+   * gerencia autorice esa visita?
+   *
+   * La regla es de Israel y es estricta. Nace APAGADA en cada gimnasio y la
+   * enciende la gerencia (pantalla Biometría) cuando ya puede registrar
+   * rostros en recepción: encendida antes, la gerencia tendría que autorizar
+   * una por una las entradas de todos los socios que aún no lo tienen. Solo
+   * pesa en las sedes que usan biometría. La política no lee este campo: quien
+   * la llama lo convierte en `biometricGate`.
+   */
+  readonly requireFaceToEnter?: boolean;
 };
 
 export const DEFAULT_ACCESS_SETTINGS: AccessSettings = {
   allowAccessWhilePastDue: false,
+  requireFaceToEnter: false,
 };
 
 export type AccessRequest = {
@@ -155,6 +188,25 @@ export type AccessRequest = {
   readonly subject: AccessSubject | null;
   /** Omitido = política por defecto. */
   readonly settings?: AccessSettings;
+  /**
+   * D-07 · La entrada que YA CONTÓ hoy en esta sede (día de operación de la
+   * sede), si la hay. Con ella, lo que pase ahora es una reentrada. Si aquella
+   * entrada descontó una visita, `visitPackId` dice de qué paquete: esa visita
+   * ya pagó el día, aunque fuera la última.
+   *
+   * Lo resuelve quien llama (la nube consulta las asistencias; un gateway
+   * lleva la cuenta del día). Omitido o `null` = todavía no entra hoy aquí.
+   */
+  readonly entryToday?: { readonly visitPackId: string | null } | null;
+  /**
+   * D-06 · La puerta del rostro. Solo se manda cuando el gimnasio exige el
+   * rostro para entrar y la sede usa biometría; omitido o `null` = aquí no se
+   * exige. Solo pesa en la entrada por el MOSTRADOR (`MANUAL`): quien pasa
+   * con su rostro o su huella ya lo demostró.
+   *   · `enrolled`: tiene rostro o huella vigente en esta sede.
+   *   · `authorized`: la gerencia autorizó ESTA visita sin rostro.
+   */
+  readonly biometricGate?: { readonly enrolled: boolean; readonly authorized: boolean } | null;
 };
 
 export type AccessDecision = {
@@ -162,6 +214,12 @@ export type AccessDecision = {
   readonly reason: DenialReason | null;
   /** Se consume una visita del paquete. Lo ejecuta quien llama, no esto. */
   readonly consumesVisit: boolean;
+  /**
+   * D-07 · REENTRADA: ya había entrado hoy en esta sede. Pasa y se registra,
+   * pero NO cuenta otra asistencia ni descuenta otra visita. Quien llama no
+   * crea asistencia. Siempre `false` en un rechazo.
+   */
+  readonly reentry: boolean;
   /** Entra, pero hay que decírselo: mora, paquete casi agotado, etc. */
   readonly warning: string | null;
   /**
@@ -204,17 +262,20 @@ export function isOverridable(reason: DenialReason): boolean {
 
 function denegar(reason: DenialReason, at: Date): AccessDecision {
   return {
-    outcome: 'DENIED', reason, consumesVisit: false, warning: null,
+    outcome: 'DENIED', reason, consumesVisit: false, reentry: false, warning: null,
     overridable: isOverridable(reason),
     policyVersion: ACCESS_POLICY_VERSION, evaluatedAt: at,
   };
 }
 
-function permitir(at: Date, opts: { consumesVisit?: boolean; warning?: string } = {}): AccessDecision {
+function permitir(at: Date, opts: { consumesVisit?: boolean; warning?: string; reentry?: boolean } = {}): AccessDecision {
+  const reentry = opts.reentry ?? false;
   return {
     outcome: 'GRANTED',
     reason: null,
-    consumesVisit: opts.consumesVisit ?? false,
+    // Una reentrada nunca descuenta (D-07): la visita de hoy ya se contó.
+    consumesVisit: reentry ? false : opts.consumesVisit ?? false,
+    reentry,
     warning: opts.warning ?? null,
     overridable: false,
     policyVersion: ACCESS_POLICY_VERSION,
@@ -268,10 +329,31 @@ export function withinTimeWindow(
  *     la puerta.
  *  3. Membresía — estado, sucursal, horario.
  *  4. Paquete de visitas — solo si no hay membresía que ya habilite.
+ *
+ * Y dos reglas que atraviesan lo anterior (política 4.0.0):
+ *
+ *  · REENTRADA (D-07). Si ya tiene hoy una entrada contada en esta sede, lo
+ *    que pase ahora no cuenta ni descuenta. No abre nada por sí misma: quien
+ *    hoy dejó de tener con qué entrar (se suspendió, salió de su horario) se
+ *    rechaza igual. La única excepción es el paquete: la visita que descontó
+ *    esta mañana ya pagó el día, aunque fuera la última.
+ *  · ROSTRO (D-06). Se mira al final, cuando su plan o su paquete ya dijeron
+ *    que sí: primero se le dice que debe y después que le falta el rostro, no
+ *    al revés. No alcanza al pase del día, al de prueba ni a la clase suelta:
+ *    son visitas de quien no es socio y se registran en el mostrador.
  */
 export function evaluateAccess(request: AccessRequest): AccessDecision {
   const { at, credential, subject } = request;
   const settings = request.settings ?? DEFAULT_ACCESS_SETTINGS;
+  const entradaDeHoy = request.entryToday ?? null;
+  const reentry = entradaDeHoy !== null;
+  /**
+   * D-06: ¿le falta el rostro y nadie autorizó esta visita? La reentrada no
+   * vuelve a pedirla: su visita de hoy ya entró (con rostro o autorizada).
+   */
+  const puerta = request.biometricGate ?? null;
+  const faltaElRostro = credential.kind === 'MANUAL' && puerta !== null
+    && !puerta.enrolled && !puerta.authorized && !reentry;
 
   // ── 1. Credencial ─────────────────────────────────────────────────────────
   if (credential.revoked) return denegar('CREDENTIAL_REVOKED', at);
@@ -305,16 +387,18 @@ export function evaluateAccess(request: AccessRequest): AccessDecision {
     if (!withinTimeWindow(m.accessTimeWindows, request.localWeekday, request.localMinuteOfDay)) {
       return denegar('OUTSIDE_TIME_WINDOW', at);
     }
-    return permitir(at, m.status === 'PAST_DUE'
-      ? { warning: 'Tiene un pago pendiente. Pásese por recepción' }
-      : {});
+    if (faltaElRostro) return denegar('BIOMETRIC_REQUIRED', at);
+    return permitir(at, {
+      reentry,
+      ...(m.status === 'PAST_DUE' ? { warning: 'Tiene un pago pendiente. Pásese por recepción' } : {}),
+    });
   }
 
   // ── 3b. Clase suelta pagada ───────────────────────────────────────────────
   // Solo para entrar a esa clase, en su sucursal. No consume visitas.
   const pase = subject.classPass;
   if (pase && pase.branchId === request.branchId) {
-    return permitir(at, { warning: `Entra a su clase suelta: ${pase.className}` });
+    return permitir(at, { reentry, warning: `Entra a su clase suelta: ${pase.className}` });
   }
 
   // ── 3c. Pase del día pagado ───────────────────────────────────────────────
@@ -322,7 +406,15 @@ export function evaluateAccess(request: AccessRequest): AccessDecision {
   // antes que el paquete para que quien pagó su pase de hoy no gaste una.
   const paseDelDia = subject.dayPass;
   if (paseDelDia && paseDelDia.branchId === request.branchId) {
-    return permitir(at, { warning: AVISO_PASE_DEL_DIA });
+    return permitir(at, { reentry, warning: AVISO_PASE_DEL_DIA });
+  }
+
+  // ── 3d. Pase de prueba (D-08) ─────────────────────────────────────────────
+  // Gratis, una vez por persona: el día y la sede donde se dio. Va antes que
+  // el paquete por lo mismo que el pase del día.
+  const paseDePrueba = subject.trialPass;
+  if (paseDePrueba && paseDePrueba.branchId === request.branchId) {
+    return permitir(at, { reentry, warning: AVISO_PASE_DE_PRUEBA });
   }
 
   // ── 4. Paquete de visitas ─────────────────────────────────────────────────
@@ -334,10 +426,15 @@ export function evaluateAccess(request: AccessRequest): AccessDecision {
     if (pack.status === 'PENDING_PAYMENT') return denegar('VISIT_PACK_UNPAID', at);
     if (pack.status === 'FROZEN') return denegar('MEMBERSHIP_FROZEN', at);
     if (pack.expired || pack.status === 'EXPIRED') return denegar('VISIT_PACK_EXPIRED', at);
+    // D-07: la visita que este paquete descontó hoy en esta sede ya pagó el
+    // día. Vuelve a pasar sin descontar otra, aunque aquella fuera la última.
+    if (entradaDeHoy !== null && entradaDeHoy.visitPackId === pack.packId) return permitir(at, { reentry: true });
     if (pack.balance <= 0 || pack.status === 'EXHAUSTED') return denegar('NO_VISITS_LEFT', at);
+    if (faltaElRostro) return denegar('BIOMETRIC_REQUIRED', at);
     return permitir(at, {
+      reentry,
       consumesVisit: true,
-      ...(pack.balance === 1 ? { warning: 'Es su última visita del paquete' } : {}),
+      ...(!reentry && pack.balance === 1 ? { warning: 'Es su última visita del paquete' } : {}),
     });
   }
 

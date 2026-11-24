@@ -104,3 +104,27 @@ describe('existencias', () => {
     expect(applyStock(3, -3)).toBe(0);
   });
 });
+
+describe('precio de socio y costo (D-21, bloque 3.6)', async () => {
+  const { precioDeTienda, costoDeLinea, MEMBER_PRICE_STATUSES } = await import('../src/pos.js');
+  const agua = { priceCents: 2000n, memberPriceCents: 1500n };
+
+  it('el precio de socio solo sale con socio vigente y producto que lo tenga', () => {
+    expect(precioDeTienda(agua, true)).toEqual({ unitPriceCents: 1500n, kind: 'MEMBER' });
+    expect(precioDeTienda(agua, false)).toEqual({ unitPriceCents: 2000n, kind: 'PUBLIC' });
+    expect(precioDeTienda({ priceCents: 2000n, memberPriceCents: null }, true)).toEqual({ unitPriceCents: 2000n, kind: 'PUBLIC' });
+  });
+
+  it('un precio de socio mayor que el de público se ignora', () => {
+    expect(precioDeTienda({ priceCents: 2000n, memberPriceCents: 2500n }, true)).toEqual({ unitPriceCents: 2000n, kind: 'PUBLIC' });
+  });
+
+  it('vigente es en prueba, activa o con pago atrasado; no congelada ni suspendida', () => {
+    expect([...MEMBER_PRICE_STATUSES].sort()).toEqual(['ACTIVE', 'PAST_DUE', 'TRIALING']);
+  });
+
+  it('sin costo capturado no hay costo de lo vendido', () => {
+    expect(costoDeLinea(null, 3)).toBeNull();
+    expect(costoDeLinea(1200n, 3)).toBe(3600n);
+  });
+});

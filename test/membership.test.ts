@@ -348,3 +348,15 @@ describe('periodos atrasados', () => {
     expect(() => missedPeriods(P('2020-01-01', '2020-01-08'), { unit: 'WEEK', value: 1 }, 1, d('2026-09-30'))).toThrow();
   });
 });
+
+describe('precio tras un cambio de precio del plan (D-19, bloque 3.6)', async () => {
+  const { precioTrasCambio } = await import('../src/membership.js');
+  it('quien paga el de lista queda exacto en el nuevo; quien paga otro conserva su distancia', () => {
+    expect(precioTrasCambio({ actualCents: 65000n, fromPriceCents: 65000n, toPriceCents: 70000n })).toBe(70000n);
+    expect(precioTrasCambio({ actualCents: 50000n, fromPriceCents: 65000n, toPriceCents: 70000n })).toBe(55000n);
+  });
+  it('una baja de precio también se aplica y nunca deja un precio negativo', () => {
+    expect(precioTrasCambio({ actualCents: 65000n, fromPriceCents: 65000n, toPriceCents: 60000n })).toBe(60000n);
+    expect(precioTrasCambio({ actualCents: 3000n, fromPriceCents: 65000n, toPriceCents: 60000n })).toBe(0n);
+  });
+});

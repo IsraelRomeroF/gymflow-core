@@ -229,4 +229,124 @@ export const SOLICITUDES_CON_PERMISO: readonly TipoDeSolicitudArco[] = ['OPPOSIT
 /** El texto se usa aunque el módulo esté apagado, salvo estos: sin el módulo, su texto no hace falta (21-23). */
 export const TEXTO_SOLO_CON_MODULO: Readonly<Record<string, string>> = { BIOMETRIC: 'biometrics' };
 
+// ── Conservación: cuánto se guarda de quien se va (D-32; bloque 3.9) ────────
+
+/**
+ * LOS PLAZOS DE CONSERVACIÓN (D-32, opción a). «Baja» es el día en que el
+ * socio se dio de baja (su ficha queda «Dado de baja»).
+ *
+ *  · El rostro deja de reconocerse el mismo día de la baja y su plantilla se
+ *    borra a los 30 días si no regresó. Si regresa antes, vuelve a
+ *    reconocerse sin registrarlo otra vez.
+ *  · Los demás datos personales se anonimizan a los 24 meses de la baja. El
+ *    gimnasio puede fijar otro plazo, entre el mínimo y el máximo. Nadie se
+ *    anonimiza solo: cada mes se arma una lista y la firma el dueño.
+ *
+ * Todo se mide en DÍAS DE CALENDARIO de la sede (medianoche UTC del día,
+ * como `businessDateIn`), no en horas: lo que vence «a los 30 días» vence
+ * igual para quien se dio de baja en la mañana que en la noche.
+ */
+export const CONSERVACION = {
+  /** Días tras la baja en que la plantilla del rostro se borra. */
+  rostroDiasTrasLaBaja: 30,
+  /** Meses tras la baja para anonimizar, si el gimnasio no fijó otro plazo. */
+  mesesTrasLaBaja: 24,
+  mesesMinimos: 1,
+  mesesMaximos: 120,
+  /** Las listas ya resueltas que enseña la pantalla. */
+  listasEnLaHistoria: 12,
+} as const;
+
+/** El plazo que rige: el que fijó el gimnasio o, sin él, el de por omisión. */
+export function mesesDeConservacion(fijado: number | null | undefined): number {
+  if (typeof fijado !== 'number' || !Number.isInteger(fijado)) return CONSERVACION.mesesTrasLaBaja;
+  if (fijado < CONSERVACION.mesesMinimos || fijado > CONSERVACION.mesesMaximos) return CONSERVACION.mesesTrasLaBaja;
+  return fijado;
+}
+
+const diaUtc = (d: Date): Date => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+
+/** Un día de calendario más `dias` días. */
+export function diaMasDias(dia: Date, dias: number): Date {
+  return new Date(diaUtc(dia).getTime() + dias * DIA_MS);
+}
+
+/** Un día de calendario menos `meses` meses; el 31 de un mes sin 31 cae en su último día. */
+export function diaMenosMeses(dia: Date, meses: number): Date {
+  const y = dia.getUTCFullYear();
+  const m = dia.getUTCMonth() - meses;
+  const ultimo = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(dia.getUTCDate(), ultimo)));
+}
+
+/**
+ * El día en que se borra la plantilla del rostro de quien se dio de baja.
+ * `arranque` es el día en que la regla empezó a correr en ese gimnasio: para
+ * las bajas anteriores los 30 días cuentan desde ahí, así la primera noche
+ * no borra nada y el gimnasio ve venir lo que se va a borrar.
+ */
+export function rostroSeBorraEl(bajaEl: Date, arranque: Date | null = null): Date {
+  const baja = diaUtc(bajaEl);
+  const desde = arranque && diaUtc(arranque).getTime() > baja.getTime() ? diaUtc(arranque) : baja;
+  return diaMasDias(desde, CONSERVACION.rostroDiasTrasLaBaja);
+}
+
+/** ¿Ya toca borrar el rostro? `hoy` y `bajaEl` son días de la sede del socio. */
+export function tocaBorrarRostro(bajaEl: Date, hoy: Date, arranque: Date | null = null): boolean {
+  return diaUtc(hoy).getTime() >= rostroSeBorraEl(bajaEl, arranque).getTime();
+}
+
+/** El último día de baja que ya cumplió el plazo: quien se dio de baja ese día o antes entra a la lista. */
+export function corteDeAnonimizacion(hoy: Date, meses: number): Date {
+  return diaMenosMeses(diaUtc(hoy), meses);
+}
+
+/** El mes de la lista (`AAAA-MM`) al que pertenece un día. */
+export function periodoDeConservacion(hoy: Date): string {
+  return `${hoy.getUTCFullYear()}-${String(hoy.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * La lista mensual de exsocios por anonimizar:
+ *   PENDING   armada, espera la firma del dueño (a lo más una por gimnasio);
+ *   SIGNED    firmada: lo listado se anonimizó (o se anonimiza esa noche si algo falló);
+ *   REPLACED  nadie la firmó y la del mes siguiente la reemplazó. No borró nada.
+ */
+export const ESTADOS_DE_LISTA_DE_CONSERVACION = ['PENDING', 'SIGNED', 'REPLACED'] as const;
+export type EstadoDeListaDeConservacion = (typeof ESTADOS_DE_LISTA_DE_CONSERVACION)[number];
+export const ESTADO_DE_LISTA_DE_CONSERVACION: Readonly<Record<EstadoDeListaDeConservacion, string>> = {
+  PENDING: 'Espera la firma', SIGNED: 'Firmada', REPLACED: 'Sin firma: la reemplazó la del mes siguiente',
+};
+
+/**
+ * Cada exsocio de la lista:
+ *   LISTED      en la lista, con sus datos intactos;
+ *   ANONYMIZED  anonimizado al amparo de la firma de esa lista;
+ *   EXCLUDED    la gerencia lo sacó de esta lista con un motivo (vuelve en la siguiente);
+ *   SKIPPED     al ejecutar ya no cumplía: regresó, ya estaba anonimizado o el plazo cambió.
+ */
+export const ESTADOS_DE_RENGLON_DE_CONSERVACION = ['LISTED', 'ANONYMIZED', 'EXCLUDED', 'SKIPPED'] as const;
+export type EstadoDeRenglonDeConservacion = (typeof ESTADOS_DE_RENGLON_DE_CONSERVACION)[number];
+export const ESTADO_DE_RENGLON_DE_CONSERVACION: Readonly<Record<EstadoDeRenglonDeConservacion, string>> = {
+  LISTED: 'En la lista', ANONYMIZED: 'Anonimizado', EXCLUDED: 'Fuera de esta lista', SKIPPED: 'No se tocó',
+};
+
+/** Por qué no se tocó a alguien que estaba en una lista firmada. */
+export const MOTIVOS_DE_SALTO_DE_CONSERVACION = ['RETURNED', 'ALREADY_ANONYMIZED', 'NOT_DUE'] as const;
+export type MotivoDeSaltoDeConservacion = (typeof MOTIVOS_DE_SALTO_DE_CONSERVACION)[number];
+export const MOTIVO_DE_SALTO_DE_CONSERVACION: Readonly<Record<MotivoDeSaltoDeConservacion, string>> = {
+  RETURNED: 'Regresó al gimnasio', ALREADY_ANONYMIZED: 'Ya estaba anonimizado', NOT_DUE: 'Ya no cumple el plazo',
+};
+
+/** Motivos de un toque para sacar a alguien de la lista del mes. */
+export const MOTIVOS_PARA_SACAR_DE_LA_LISTA = ['Tiene un adeudo por cobrar', 'Hay una reclamación abierta', 'Dijo que va a regresar'] as const;
+
+/** El motivo que queda en la bitácora de cada anonimización hecha por una lista firmada. */
+export function motivoDeAnonimizacionPorLista(periodo: string, meses: number): string {
+  return `Lista de conservación ${periodo}: pasaron ${meses} meses desde su baja`;
+}
+
+/** El motivo con que se revoca el rostro de quien no regresó. */
+export const MOTIVO_ROSTRO_TRAS_LA_BAJA = `Pasaron ${CONSERVACION.rostroDiasTrasLaBaja} días desde su baja sin regresar`;
+
 export * from './modelos-consentimiento.js';

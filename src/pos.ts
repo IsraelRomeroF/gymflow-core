@@ -51,6 +51,39 @@ export function inventorySignIsValid(type: InventoryMovementType, delta: number)
   return direction === 1 ? delta > 0 : delta < 0;
 }
 
+// ── Precio de público y precio de socio (D-21, bloque 3.6) ──────────────────
+
+export type PosPriceKind = 'PUBLIC' | 'MEMBER';
+
+/**
+ * Los estados de membresía con los que un socio compra a precio de socio: la
+ * membresía «vigente» de D-21. Cuenta quien entra hoy por su membresía: en
+ * prueba, activa o con pago atrasado dentro de su gracia. No cuenta la
+ * congelada, la suspendida ni la que todavía no se paga.
+ */
+export const MEMBER_PRICE_STATUSES: readonly string[] = ['TRIALING', 'ACTIVE', 'PAST_DUE'];
+
+/**
+ * A qué precio sale un producto. El de socio solo aplica si el producto lo
+ * tiene Y la venta es a un socio con membresía vigente; nunca sale más caro
+ * que el de público (un precio de socio mayor se ignora).
+ */
+export function precioDeTienda(producto: { priceCents: bigint; memberPriceCents: bigint | null }, esSocioVigente: boolean): { unitPriceCents: bigint; kind: PosPriceKind } {
+  if (esSocioVigente && producto.memberPriceCents !== null && producto.memberPriceCents <= producto.priceCents) {
+    return { unitPriceCents: producto.memberPriceCents, kind: 'MEMBER' };
+  }
+  return { unitPriceCents: producto.priceCents, kind: 'PUBLIC' };
+}
+
+/**
+ * Lo que costó lo vendido en una línea: costo unitario del día × cantidad.
+ * `null` si el producto no tenía costo capturado: de esa línea no se sabe la
+ * ganancia y el Tablero no le resta nada (D-21: sin costo, nada cambia).
+ */
+export function costoDeLinea(unitCostCents: bigint | null, quantity: number): bigint | null {
+  return unitCostCents === null ? null : unitCostCents * BigInt(quantity);
+}
+
 // ── Aritmética de la venta ──────────────────────────────────────────────────
 
 export type SaleLineInput = {

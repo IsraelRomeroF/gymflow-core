@@ -5,9 +5,13 @@ import {
   SOLICITUDES_DESDE_EL_PORTAL, TIPOS_DE_SOLICITUD_ARCO, TIPO_DE_SOLICITUD_ARCO, TIPO_DE_SOLICITUD_ARCO_PERSONAL, TIPO_DE_SOLICITUD_ARCO_SOCIO,
   corchetesSinCompletar, estadoDeSolicitud, faltantesDelAviso, folioDeSolicitud, modeloDeTexto, plazoVigente, puntosSinRevisar,
   solicitudVencida, textoDelMandato, venceHacerEfectiva, venceResponder, type FechasDeSolicitud,
+  CONSERVACION, ESTADOS_DE_LISTA_DE_CONSERVACION, ESTADOS_DE_RENGLON_DE_CONSERVACION, ESTADO_DE_LISTA_DE_CONSERVACION, ESTADO_DE_RENGLON_DE_CONSERVACION,
+  MOTIVOS_DE_SALTO_DE_CONSERVACION, MOTIVO_DE_SALTO_DE_CONSERVACION, MOTIVO_ROSTRO_TRAS_LA_BAJA, corteDeAnonimizacion, diaMasDias, diaMenosMeses, isoDate,
+  mesesDeConservacion, motivoDeAnonimizacionPorLista, periodoDeConservacion, rostroSeBorraEl, tocaBorrarRostro,
 } from '../src/index.js';
 import {
   ConsentDocumentReview, MemberConsents, PrivacyInbox, PrivacyRequest, PrivacyRequestReceipt, PrivacyRequestsSummary, diferenciasConElContrato,
+  PrivacyBatch, PrivacyConservation, PrivacySettings,
 } from '../src/contracts/index.js';
 
 const dia = (n: number) => new Date(Date.UTC(2026, 10, n, 18));
@@ -166,5 +170,77 @@ describe('contratos de privacidad', () => {
       current: { id: solicitud.memberId, version: '2026-10', bodyText: 'Antes', publishedAt: '2026-10-01T18:00:00.000Z' },
       placeholders: ['[FECHA]'], checklist: [{ key: 'responsable', text: 'Dice quién es el responsable y su domicilio', found: false }], publishable: false,
     })).toEqual([]);
+  });
+});
+
+describe('conservación (D-32): los plazos del rostro y de la lista mensual', () => {
+  const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+  it('los valores por omisión son los de D-32: 30 días el rostro, 24 meses lo demás', () => {
+    expect(CONSERVACION.rostroDiasTrasLaBaja).toBe(30);
+    expect(CONSERVACION.mesesTrasLaBaja).toBe(24);
+    expect(mesesDeConservacion(null)).toBe(24);
+    expect(mesesDeConservacion(undefined)).toBe(24);
+    expect(mesesDeConservacion(36)).toBe(36);
+    // Un valor imposible guardado a mano no deja al gimnasio sin plazo ni lo acorta: rige el de por omisión.
+    expect(mesesDeConservacion(0)).toBe(24);
+    expect(mesesDeConservacion(1.5)).toBe(24);
+    expect(mesesDeConservacion(500)).toBe(24);
+  });
+
+  it('el rostro se borra a los 30 días de la baja: el día 29 todavía no, el 30 sí', () => {
+    expect(isoDate(rostroSeBorraEl(d('2026-11-01')))).toBe('2026-12-01');
+    expect(tocaBorrarRostro(d('2026-11-01'), d('2026-11-30'))).toBe(false);
+    expect(tocaBorrarRostro(d('2026-11-01'), d('2026-12-01'))).toBe(true);
+    // Da igual la hora de la baja: cuenta el día.
+    expect(tocaBorrarRostro(new Date('2026-11-01T23:59:00.000Z'), d('2026-12-01'))).toBe(true);
+  });
+
+  it('las bajas anteriores al arranque cuentan sus 30 días desde el arranque; las posteriores, desde la baja', () => {
+    const arranque = d('2026-11-23');
+    expect(isoDate(rostroSeBorraEl(d('2025-03-10'), arranque))).toBe('2026-12-23');
+    expect(tocaBorrarRostro(d('2025-03-10'), d('2026-11-23'), arranque)).toBe(false);
+    expect(tocaBorrarRostro(d('2025-03-10'), d('2026-12-22'), arranque)).toBe(false);
+    expect(tocaBorrarRostro(d('2025-03-10'), d('2026-12-23'), arranque)).toBe(true);
+    expect(isoDate(rostroSeBorraEl(d('2026-11-25'), arranque))).toBe('2026-12-25');
+  });
+
+  it('el corte de la lista: quien se dio de baja hace 24 meses o más, contando por calendario', () => {
+    expect(isoDate(corteDeAnonimizacion(d('2026-11-23'), 24))).toBe('2024-11-23');
+    expect(isoDate(corteDeAnonimizacion(d('2026-03-31'), 1))).toBe('2026-02-28');
+    expect(isoDate(corteDeAnonimizacion(d('2024-02-29'), 12))).toBe('2023-02-28');
+    expect(isoDate(diaMenosMeses(d('2026-01-15'), 2))).toBe('2025-11-15');
+    expect(isoDate(diaMasDias(d('2026-12-20'), 30))).toBe('2027-01-19');
+    expect(periodoDeConservacion(d('2026-11-23'))).toBe('2026-11');
+    expect(periodoDeConservacion(d('2027-01-01'))).toBe('2027-01');
+  });
+
+  it('cada estado de la lista y de sus renglones tiene su palabra, y el motivo de la bitácora dice mes y plazo', () => {
+    for (const e of ESTADOS_DE_LISTA_DE_CONSERVACION) expect(ESTADO_DE_LISTA_DE_CONSERVACION[e].length).toBeGreaterThan(5);
+    for (const e of ESTADOS_DE_RENGLON_DE_CONSERVACION) expect(ESTADO_DE_RENGLON_DE_CONSERVACION[e].length).toBeGreaterThan(5);
+    for (const m of MOTIVOS_DE_SALTO_DE_CONSERVACION) expect(MOTIVO_DE_SALTO_DE_CONSERVACION[m].length).toBeGreaterThan(5);
+    expect(motivoDeAnonimizacionPorLista('2026-11', 24)).toBe('Lista de conservación 2026-11: pasaron 24 meses desde su baja');
+    expect(MOTIVO_ROSTRO_TRAS_LA_BAJA).toContain('30 días');
+  });
+
+  it('el aviso modelo dice el plazo y lo del rostro', () => {
+    const modelo = modeloDeTexto('PRIVACY_NOTICE', { razonSocial: 'Gimnasios del Centro, S.A. de C.V.', nombreComercial: 'Gimnasio Centro', sucursales: ['Centro'], mesesDeConservacion: 24 })!;
+    expect(modelo.texto).toContain('los conservamos 24 meses');
+    expect(modelo.texto).toContain('su plantilla se borra a los 30 días si no regresas');
+  });
+
+  it('los contratos de la lista y de la pantalla', () => {
+    const lista = {
+      id: '019a1b2c-3d4e-7f50-8a9b-0c1d2e4f2a9c', period: '2026-11', status: 'PENDING', monthsAfterArchive: 24, cutoffOn: '2024-11-23',
+      preparedAt: '2026-11-23T08:00:00.000Z', signedAt: null, signedByName: null, counts: { listed: 1, anonymized: 0, excluded: 0, skipped: 0 },
+    };
+    const renglon = { memberId: '019a1b2c-3d4e-7f50-8a9b-0c1d2e4f2a9d', memberCode: 'CEN-000123', fullName: 'Ana Ruiz', homeBranchId: null, archivedOn: '2024-10-02', status: 'LISTED', note: null };
+    expect(diferenciasConElContrato(PrivacyBatch, { ...lista, items: [renglon] })).toEqual([]);
+    expect(diferenciasConElContrato(PrivacyConservation, {
+      monthsAfterArchive: 24, monthsIsDefault: true, faceDaysAfterArchive: 30, startedOn: '2026-11-23', faces: { waiting: 2, nextDeletionOn: '2026-12-23' },
+      batch: { ...lista, items: [renglon] }, canSign: false, canExclude: true, history: [{ ...lista, status: 'SIGNED', signedAt: '2026-10-03T18:00:00.000Z', signedByName: 'Dueña' }],
+    })).toEqual([]);
+    expect(diferenciasConElContrato(PrivacySettings, { monthsAfterArchive: null, effectiveMonths: 24 })).toEqual([]);
+    expect(diferenciasConElContrato(PrivacyBatch, { ...lista, status: 'BORRADA', items: [] })).not.toEqual([]);
   });
 });

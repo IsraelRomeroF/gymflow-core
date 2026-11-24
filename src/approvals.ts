@@ -56,6 +56,8 @@ export const APPROVAL_RESOURCES_BY_PERMISSION: Readonly<Record<string, readonly 
   'billing:discount:apply': ['Charge'],
   'billing:waiver:apply': ['Charge', 'Membership'],
   'members:anonymize': ['Member'],
+  // D-06 (bloque 3.3): la entrada de un socio sin rostro. Si la gerencia no está, la firma la dueña.
+  'access:entry:authorize': ['Member'],
   'members:balance:adjust': ['Member'],
   'memberships:visitpack:adjust': ['VisitPack'],
   'reports:month:close': ['MonthlyClose'],
@@ -147,4 +149,39 @@ export type ApprovalExpiryCause = 'seen' | 'notified' | 'unseen';
 export function approvalExpiryCause(s: { seenAt: unknown; notifiedCount: number }): ApprovalExpiryCause {
   if (s.seenAt) return 'seen';
   return s.notifiedCount > 0 ? 'notified' : 'unseen';
+}
+
+/**
+ * EL «NO» QUEDA PEGADO A LA OPERACIÓN (D-03, opción b; auditoría 8, bloque 3.2).
+ *
+ * «La misma operación» es el mismo permiso sobre el mismo registro (el pago,
+ * el cargo, el turno de caja, el mes), la pida quien la pida. Antes un «no»
+ * solo cerraba esa solicitud: se podía volver a pedir al instante, sin
+ * límite, y firmarla en el mostrador un minuto después.
+ */
+
+/** Cuánto tiempo recuerda una operación que la rechazaron: quien la vuelve a pedir tiene que contestar ese «no». */
+export const APPROVAL_REJECTION_MEMORY_MS = 24 * 60 * 60_000;
+
+/** La misma operación se pide al teléfono, como mucho, 3 veces en una hora. Las ya autorizadas no cuentan. */
+export const APPROVAL_REASK_LIMIT = { max: 3, perMs: 60 * 60_000 } as const;
+
+/**
+ * Tras un «no», durante 30 minutos nadie firma esa operación en el mostrador
+ * con la contraseña de quien firma: solo desde su propia sesión, contestando
+ * una solicitud a distancia.
+ */
+export const APPROVAL_REJECT_LOCK_MS = 30 * 60_000;
+
+/** La respuesta al «no» anterior, la pregunta de quien firma y su contestación: de 3 a 300 caracteres. */
+export const APPROVAL_NOTE_MIN = 3;
+export const APPROVAL_NOTE_MAX = 300;
+
+/** Preguntas de un toque para quien firma: «Preguntar» en vez de «No autorizar». */
+export const APPROVAL_QUESTION_SUGGESTIONS = ['¿De qué socio es?', '¿Para qué es?', '¿Ya contaste el cajón?', 'Llámame antes'] as const;
+
+/** ¿Sigue cerrada la firma en el mostrador por un «no» dado en `rejectedAt`? Devuelve hasta cuándo, o null. */
+export function approvalRejectLockUntil(rejectedAt: Date, now: Date = new Date()): Date | null {
+  const hasta = new Date(rejectedAt.getTime() + APPROVAL_REJECT_LOCK_MS);
+  return hasta > now ? hasta : null;
 }

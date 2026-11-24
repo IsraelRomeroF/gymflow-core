@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { Id, Instante } from './comun.js';
+import { Fecha } from './comun.js';
 import { CANALES_DE_SOLICITUD_ARCO, ESTADOS_DE_SOLICITUD_ARCO, RESULTADOS_DE_SOLICITUD_ARCO, TIPOS_DE_SOLICITUD_ARCO } from '../privacidad.js';
+import { ESTADOS_DE_LISTA_DE_CONSERVACION, ESTADOS_DE_RENGLON_DE_CONSERVACION } from '../privacidad.js';
 import type { ConsentType } from '../intake.js';
 
 /**
@@ -156,3 +158,107 @@ export const ConsentDocumentReview = z.object({
   publishable: z.boolean(),
 });
 export type ConsentDocumentReview = z.infer<typeof ConsentDocumentReview>;
+
+// ── Conservación (D-32; bloque 3.9) ─────────────────────────────────────────
+
+/** Un exsocio en la lista del mes. El nombre se lee de su ficha: la lista no lo guarda. */
+export const PrivacyBatchItem = z.object({
+  memberId: Id,
+  memberCode: z.string(),
+  /** Null cuando ya está anonimizado. */
+  fullName: z.string().nullable(),
+  homeBranchId: Id.nullable(),
+  /** El día de su baja, en su sede. */
+  archivedOn: Fecha,
+  status: z.enum(ESTADOS_DE_RENGLON_DE_CONSERVACION),
+  /** El motivo con que se sacó de la lista o por el que no se tocó. */
+  note: z.string().nullable(),
+});
+export type PrivacyBatchItem = z.infer<typeof PrivacyBatchItem>;
+
+/** Una lista mensual de conservación, sin sus renglones. */
+export const PrivacyBatchSummary = z.object({
+  id: Id,
+  /** El mes de la lista: `2026-11`. */
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  status: z.enum(ESTADOS_DE_LISTA_DE_CONSERVACION),
+  /** El plazo con el que se armó. */
+  monthsAfterArchive: z.number().int(),
+  /** Entró quien se dio de baja este día o antes. */
+  cutoffOn: Fecha,
+  preparedAt: Instante,
+  signedAt: Instante.nullable(),
+  signedByName: z.string().nullable(),
+  counts: z.object({ listed: z.number().int(), anonymized: z.number().int(), excluded: z.number().int(), skipped: z.number().int() }),
+});
+export type PrivacyBatchSummary = z.infer<typeof PrivacyBatchSummary>;
+
+export const PrivacyBatch = PrivacyBatchSummary.extend({ items: z.array(PrivacyBatchItem) });
+export type PrivacyBatch = z.infer<typeof PrivacyBatch>;
+
+/** `GET /privacy/conservation`: los plazos, los rostros en espera y la lista del mes. */
+export const PrivacyConservation = z.object({
+  /** El plazo que rige para anonimizar. */
+  monthsAfterArchive: z.number().int(),
+  /** `true` si el gimnasio no fijó plazo y rige el de por omisión. */
+  monthsIsDefault: z.boolean(),
+  faceDaysAfterArchive: z.number().int(),
+  /** El día en que los plazos empezaron a correr en este gimnasio; null si el cierre diario aún no pasa. */
+  startedOn: Fecha.nullable(),
+  /** Rostros de exsocios que siguen guardados (sin reconocerse) y cuándo se borra el próximo. */
+  faces: z.object({ waiting: z.number().int(), nextDeletionOn: Fecha.nullable() }),
+  /** La lista que espera firma, con sus renglones; null si no hay. */
+  batch: PrivacyBatch.nullable(),
+  /** ¿Quien pregunta puede firmarla? */
+  canSign: z.boolean(),
+  /** ¿Quien pregunta puede sacar a alguien de la lista? */
+  canExclude: z.boolean(),
+  /** Las últimas listas ya resueltas. */
+  history: z.array(PrivacyBatchSummary),
+});
+export type PrivacyConservation = z.infer<typeof PrivacyConservation>;
+
+/** `POST /privacy/conservation/sign`: la lista firmada y lo que se hizo con cada renglón. */
+export const PrivacyBatchSigned = z.object({ batch: PrivacyBatch });
+export type PrivacyBatchSigned = z.infer<typeof PrivacyBatchSigned>;
+
+/** `GET` y `PUT /privacy/settings`. `monthsAfterArchive` null = rige el plazo por omisión (`effectiveMonths`). */
+export const PrivacySettings = z.object({ monthsAfterArchive: z.number().int().nullable(), effectiveMonths: z.number().int() });
+export type PrivacySettings = z.infer<typeof PrivacySettings>;
+
+// ── La firma de la dueña en el aviso de privacidad (3.7, D-25) ──────────────
+
+export const NOTICE_SIGNATURE_STATUSES = ['PENDING', 'SIGNED', 'REJECTED', 'STALE'] as const;
+
+/**
+ * `GET /consent-documents/signature-requests`: los avisos de privacidad cuya
+ * publicación pidió la gerencia y que esperan la firma de la dueña, y los que
+ * ella no firmó (con su motivo). `STALE`: el borrador cambió después de
+ * pedirla, hay que volver a pedirla.
+ */
+export const NoticeSignatureRequests = z.object({
+  requests: z.array(z.object({
+    documentId: Id,
+    version: z.string(),
+    title: z.string(),
+    status: z.enum(NOTICE_SIGNATURE_STATUSES),
+    requestedAt: Instante,
+    requestedByName: z.string().nullable(),
+    reason: z.string(),
+    resolvedAt: Instante.nullable(),
+    resolvedByName: z.string().nullable(),
+    note: z.string().nullable(),
+  })),
+  /** Quien pregunta es quien firma (la dueña). */
+  canSign: z.boolean(),
+});
+export type NoticeSignatureRequests = z.infer<typeof NoticeSignatureRequests>;
+
+/** `POST /consent-documents/:id/publish`. Con `awaitingSignature` el aviso NO quedó publicado: espera la firma de la dueña. */
+export const ConsentDocumentPublishResult = z.object({
+  ok: z.literal(true),
+  status: z.enum(CONSENT_DOCUMENT_STATUSES),
+  publishedAt: Instante.nullable(),
+  awaitingSignature: z.boolean(),
+});
+export type ConsentDocumentPublishResult = z.infer<typeof ConsentDocumentPublishResult>;

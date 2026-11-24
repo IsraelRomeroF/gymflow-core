@@ -327,7 +327,8 @@ export function canConsumeVisit(
 /**
  * LA CUOTA de una membresía, en centavos: una sola regla para la cuota del
  * periodo, el adeudo de una suspendida, el cambio de plan y lo que muestre
- * cualquier pantalla (auditoría 8, 16-04; D-19 no se adelanta).
+ * cualquier pantalla (auditoría 8, 16-04). Con D-19 (bloque 3.6) el pactado
+ * lo mueve cada cambio de precio del plan: ver `precioTrasCambio`.
  *
  *   1. El precio PACTADO al vender, importar o cambiar de plan.
  *   2. Si no hay pactado, el precio propio del plan en la sede de la venta.
@@ -346,6 +347,19 @@ export function precioDeCuota(input: {
   readonly branchPriceCents?: bigint | null | undefined;
 }): bigint {
   return input.agreedPriceCents ?? input.branchPriceCents ?? input.planPriceCents;
+}
+
+/**
+ * LO QUE PAGA UNA MEMBRESÍA TRAS UN CAMBIO DE PRECIO DE SU PLAN (D-19, fase 3
+ * · bloque 3.6): a lo que pagaba se le suma la misma diferencia que cambió el
+ * plan. Quien pagaba el precio de lista queda exacto en el nuevo; quien tenía
+ * un precio propio conserva su distancia con el de lista. Nunca baja de cero.
+ * A quién se le aplica (todas las vivas, salvo las que conservan su precio)
+ * lo decide `catalog`; aquí solo está la cuenta.
+ */
+export function precioTrasCambio(input: { readonly actualCents: bigint; readonly fromPriceCents: bigint; readonly toPriceCents: bigint }): bigint {
+  const nuevo = input.actualCents + (input.toPriceCents - input.fromPriceCents);
+  return nuevo < 0n ? 0n : nuevo;
 }
 
 /** Con qué quedó saldado un cargo. */

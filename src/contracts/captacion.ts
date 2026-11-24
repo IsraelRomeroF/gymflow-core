@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Centavos, Fecha, Id, Instante } from './comun.js';
 import { Pagina } from './lista.js';
 import { FollowUpContact } from './retention.js';
-import { IDENTITY_KINDS, ONBOARDING_STEPS, PROSPECT_QUEUES } from '../captacion.js';
+import { IDENTITY_KINDS, ONBOARDING_STEPS, PROSPECT_QUEUES, RESPONSIBLE_KINDS } from '../captacion.js';
 
 /**
  * CAPTACIÓN: interesados (`prospects/prospects.routes.ts`) y altas digitales
@@ -143,6 +143,8 @@ export const IntakeStatusSchema = z.enum(INTAKE_STATUSES);
  */
 export const INTAKE_FLAGS = [
   'MISSING_BIRTHDATE', 'MISSING_EMERGENCY', 'HEALTH_NOTE', 'POSSIBLE_DUPLICATE', 'SHARED_PHONE', 'WAS_PROSPECT', 'RETURNING', 'CORRECTED',
+  // D-10 (fase 3): tiene de 15 a 17 años; se aprueba cuando su tutor firma en el mostrador.
+  'NEEDS_GUARDIAN',
 ] as const;
 export type IntakeFlag = (typeof INTAKE_FLAGS)[number];
 
@@ -213,6 +215,11 @@ export const IntakeDetail = z.object({
     corrections: IntakeCorrections.nullable(),
     correctedAt: Instante.nullable(),
     correctedByName: z.string().nullable(),
+    /** D-10: es menor de edad hoy (con lo corregido encima): para aprobar o vincular hace falta la firma de su tutor. */
+    minor: z.boolean(),
+    /** El tutor que el menor escribió en el QR: a quién llamar. Quien firma se confirma en el mostrador. */
+    guardianName: z.string().nullable(),
+    guardianPhoneE164: z.string().nullable(),
   }),
   suggestion: z.enum(['AUTO_LINK', 'NEEDS_REVIEW', 'NEW_MEMBER']),
   matches: z.array(z.object({
@@ -272,3 +279,43 @@ export const MemberOnboarding = z.object({
   missingFields: z.array(z.string()),
 });
 export type MemberOnboarding = z.infer<typeof MemberOnboarding>;
+
+// ── Celular compartido y responsable (D-09) · completar la ficha (D-11) ─────
+
+/** El responsable anotado en una ficha: del celular que comparte y, si es menor, su tutor. */
+export const MemberResponsible = z.object({
+  kind: z.enum(RESPONSIBLE_KINDS),
+  /** Con `MEMBER`: el socio responsable (su ficha). */
+  memberId: Id.nullable(),
+  memberCode: z.string().nullable(),
+  /** Nombre del responsable; con `SELF`, `null`. */
+  name: z.string().nullable(),
+  /** Teléfono propio del adulto, si no es el mismo que comparte. */
+  phoneE164: z.string().nullable(),
+  /** Firmó como tutor en el mostrador (D-10) y cuándo. */
+  guardianSignedAt: Instante.nullable(),
+});
+export type MemberResponsible = z.infer<typeof MemberResponsible>;
+
+/**
+ * `GET /members/:id/shared-phone`: con quién comparte celular este socio y
+ * quién responde por el número (D-09). `hidden`: quien pregunta no ve
+ * teléfonos (el coach), y entonces no se le dice nada.
+ */
+export const MemberSharedPhone = z.object({
+  hidden: z.boolean(),
+  /** Otros socios vivos con el mismo celular. */
+  sharedWith: z.array(z.object({ id: Id, fullName: z.string(), memberCode: z.string(), status: z.string() })),
+  responsible: MemberResponsible.nullable(),
+  /** Comparte celular y nadie ha anotado quién responde por el número. */
+  missingResponsible: z.boolean(),
+});
+export type MemberSharedPhone = z.infer<typeof MemberSharedPhone>;
+
+/** `POST /members/:id/complete` (D-11): qué campos vacíos se llenaron y cuáles se dejaron porque ya tenían dato. */
+export const MemberCompleted = z.object({
+  filled: z.array(z.string()),
+  skipped: z.array(z.string()),
+  missingFields: z.array(z.string()),
+});
+export type MemberCompleted = z.infer<typeof MemberCompleted>;

@@ -196,6 +196,13 @@ export function mensajeDeCampos(issues: ReadonlyArray<{ path?: string | null; me
  */
 export const AVISO_PASE_DEL_DIA = 'Entra con su pase del día';
 
+/**
+ * El aviso con que entra quien trae PASE DE PRUEBA (fase 3, bloque 3.3; D-08):
+ * gratis, uno por persona. Igual que el del pase del día: lo pone la política
+ * y lo reconocen las pantallas.
+ */
+export const AVISO_PASE_DE_PRUEBA = 'Entra con su pase de prueba';
+
 /** Estado del socio (`members.status`). */
 export const ESTADO_DE_SOCIO: Readonly<Record<string, EtiquetaConTono>> = {
   ACTIVE: { label: 'Activo', tone: 'ok' },
@@ -277,6 +284,8 @@ const rechazos = {
   CREDENTIAL_REVOKED: 'Credencial revocada',
   CREDENTIAL_EXPIRED: 'Credencial caducada',
   DUPLICATE_SCAN: 'Doble paso',
+  // D-06 (bloque 3.3): su plan está en orden; lo que falta es el rostro o la autorización de la gerencia.
+  BIOMETRIC_REQUIRED: 'Sin rostro registrado',
 } as const satisfies Record<DenialReason, string>;
 
 /** Por qué la puerta dijo que no (`access_decisions.denialReason`), en corto. */
@@ -319,6 +328,7 @@ const motivosDeMensaje = {
   PAYMENT_DUE_SOON: { label: 'Pago por vencer', plural: 'Pagos por vencer', tone: 'warn' },
   MEMBERSHIP_ENDING: { label: 'Plan por terminar', plural: 'Planes por terminar', tone: 'warn' },
   WE_MISS_YOU: { label: 'Dejó de venir', plural: 'Dejaron de venir o aflojan', tone: 'info' },
+  PRICE_CHANGE: { label: 'Cambio de precio', plural: 'Avisos de cambio de precio', tone: 'info' },
 } as const satisfies Record<OutboundKind, EtiquetaConTono & { plural: string }>;
 
 /** Por qué se le escribe a un socio desde Mensajes (`outbound_messages.kind`, bloque 2.9): el grupo de la lista y el renglón de la campana. */
@@ -469,6 +479,8 @@ export const INSIGNIA_DE_ALTA: Readonly<Record<string, EtiquetaConTono>> = {
   WAS_PROSPECT: { label: 'Era interesado', tone: 'info' },
   RETURNING: { label: 'Ya venía', tone: 'neutral' },
   CORRECTED: { label: 'Corregida', tone: 'neutral' },
+  // D-10 (3.4): de 15 a 17 años; se aprueba cuando su tutor firma en el mostrador.
+  NEEDS_GUARDIAN: { label: 'Falta su tutor', tone: 'danger' },
 };
 
 /** Qué es la persona que encontró el buscador de identidad (`IDENTITY_KINDS`). */

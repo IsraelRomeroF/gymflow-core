@@ -114,6 +114,8 @@ export const ROLES: readonly RoleDef[] = [
       'staff:unlock',
       // Y el rescate de su gerente cuando este olvidó la contraseña o se fue (DP-02).
       'staff:rescue',
+      // Lee los textos legales completos y firma el aviso de privacidad (D-25).
+      'settings:consent:read',
     ),
     limits: SIN_TOPE,
   },

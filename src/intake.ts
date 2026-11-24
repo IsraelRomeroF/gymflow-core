@@ -88,7 +88,12 @@ export function consentGaps(
   const gaps: ConsentGap[] = [];
 
   for (const type of SIGNUP_REQUIRED_CONSENTS) {
-    const current = documents.find((d) => d.consentType === type && d.status !== 'RETIRED');
+    // Manda el texto PUBLICADO. Un borrador más nuevo (por ejemplo, el aviso de
+    // privacidad que espera la firma de la dueña, D-25) no detiene las altas:
+    // se sigue firmando el vigente hasta que el nuevo se publique. Solo cuando
+    // no hay ninguno publicado, el borrador bloquea.
+    const current = documents.find((d) => d.consentType === type && d.status === 'PUBLISHED')
+      ?? documents.find((d) => d.consentType === type && d.status !== 'RETIRED');
     const given = accepted.find((a) => a.consentType === type);
 
     if (!given) { gaps.push({ kind: 'MISSING', consentType: type }); continue; }
@@ -125,12 +130,30 @@ export type IntakeDraft = {
    */
   readonly memberSince: Date | null;
   readonly healthNotes: string | null;
+  /**
+   * «¿Tienes 18 años o más?» (D-10, fase 3). `false` obliga a dar la fecha de
+   * nacimiento; sin contestar (un cliente viejo) vale lo que diga la fecha.
+   */
+  readonly adult?: boolean | null | undefined;
+  /** Papá, mamá o tutor de quien tiene de 15 a 17 años (D-10): a quién llama el gimnasio y quién firma en el mostrador. */
+  readonly guardianName?: string | null | undefined;
+  readonly guardianPhone?: string | null | undefined;
 };
 
 export type IntakeFieldError = { readonly field: keyof IntakeDraft; readonly message: string };
 
 export const MIN_AGE_YEARS = 15;
 export const MAX_AGE_YEARS = 110;
+/** Mayoría de edad: por debajo, el alta necesita a su tutor (D-10). */
+export const ADULT_AGE_YEARS = 18;
+
+/**
+ * ¿Es menor de edad ese día? (D-10). Sin fecha de nacimiento no se sabe y se
+ * contesta `false`: el formulario del QR la exige a quien dice no tener 18.
+ */
+export function isMinor(birthDate: Date | null | undefined, today: Date): boolean {
+  return !!birthDate && yearsBetween(birthDate, today) < ADULT_AGE_YEARS;
+}
 
 /**
  * Valida el borrador. Es DELIBERADAMENTE tolerante con todo salvo el contacto.
@@ -169,6 +192,20 @@ export function validateIntake(draft: IntakeDraft, today: Date): IntakeFieldErro
       errors.push({ field: 'birthDate', message: `El alta en línea es para mayores de ${MIN_AGE_YEARS} años` });
     } else if (years > MAX_AGE_YEARS) {
       errors.push({ field: 'birthDate', message: 'Revisa la fecha de nacimiento' });
+    }
+  }
+
+  // Menores de 15 a 17 (D-10): dicen quién es su tutor y a qué celular se le
+  // llama. El alta queda «falta su tutor» hasta que firme en el mostrador.
+  if (draft.adult === false && !draft.birthDate) {
+    errors.push({ field: 'birthDate', message: 'Si tienes menos de 18 años, escribe tu fecha de nacimiento' });
+  }
+  if (isMinor(draft.birthDate, today) && yearsBetween(draft.birthDate!, today) >= MIN_AGE_YEARS) {
+    if (normalizeName(draft.guardianName ?? '').length < 2) {
+      errors.push({ field: 'guardianName', message: 'Escribe el nombre de tu papá, mamá o tutor' });
+    }
+    if (!normalizePhoneMx(draft.guardianPhone)) {
+      errors.push({ field: 'guardianPhone', message: 'Escribe el celular de tu papá, mamá o tutor (10 dígitos)' });
     }
   }
 

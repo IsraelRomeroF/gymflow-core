@@ -14,15 +14,36 @@ export const Product = z.object({
   /** En mayúsculas. */
   sku: z.string(),
   name: z.string(),
+  /** El precio de público. */
   priceCents: Centavos,
   priceLabel: z.string(),
+  /** Precio para socios con membresía vigente (D-21); `null` = no tiene: todos pagan el de público. */
+  memberPriceCents: Centavos.nullable(),
+  /**
+   * Lo que le cuesta al gimnasio (D-21); `null` = sin capturar. Solo viaja a
+   * quien administra el catálogo (`pos:product:manage`): el mostrador no lo recibe.
+   */
+  costCents: Centavos.nullable().optional(),
   tracksInventory: z.boolean(),
   isActive: z.boolean(),
 });
 export type Product = z.infer<typeof Product>;
 
-/** `GET /products[?includeInactive=1]`: por nombre; sin el parámetro, solo los activos. */
-export const ProductList = z.object({ products: z.array(Product) });
+/** A qué precio sale una línea: el de público o el de socio. */
+export const POS_PRICE_KINDS = ['PUBLIC', 'MEMBER'] as const;
+export const PosPriceKind = z.enum(POS_PRICE_KINDS);
+export type PosPriceKind = z.infer<typeof PosPriceKind>;
+
+/**
+ * `GET /products[?includeInactive=1][&memberId=]`: por nombre; sin el
+ * parámetro, solo los activos. Con `memberId`, `memberPricing` dice si a ese
+ * socio le toca el precio de socio HOY (lo decide el servidor al cobrar; esto
+ * es para que la pantalla muestre el mismo total).
+ */
+export const ProductList = z.object({
+  products: z.array(Product),
+  memberPricing: z.object({ memberId: Id, applies: z.boolean() }).nullable().optional(),
+});
 export type ProductList = z.infer<typeof ProductList>;
 
 /** Una venta de mostrador. `POST /pos/sales` (201, también en el reintento) y `GET /pos/sales/:id`. */
@@ -49,6 +70,8 @@ export const PosSale = z.object({
     quantity: z.number().int(),
     unitPriceCents: Centavos,
     lineTotalCents: Centavos,
+    /** A qué precio salió: `MEMBER` si se aplicó el precio de socio (D-21). */
+    priceKind: PosPriceKind,
   })),
 });
 export type PosSale = z.infer<typeof PosSale>;

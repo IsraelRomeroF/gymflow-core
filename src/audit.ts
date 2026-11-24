@@ -140,6 +140,8 @@ export const ACTIONS_REQUIRING_REASON = new Set<string>([
   // Personal: lo que puede hacer cada quien y quién deja de entrar.
   'staff.permissions', 'staff.role', 'staff.deactivate', 'staff.rescue',
   'access.manual_grant', 'member.anonymize',
+  // D-06 (bloque 3.3): quién entra sin rostro y quién cambia la regla.
+  'access.entry.authorize_without_face', 'access.face_rule.change',
   // Publicar un texto que el socio va a firmar, retirar el que firmó, rechazar
   // un alta y cancelar la reserva de otro son decisiones, no rutina.
   'consent.document.publish', 'consent.document.retire', 'intake.reject',

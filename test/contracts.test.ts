@@ -91,11 +91,12 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
     ['GET /reports/monthly-close/preview', MonthlyClosePreview, {
       month: '2026-10', closable: false,
       blockers: [{ code: 'ALREADY_CLOSED', message: 'Ese mes ya está cerrado' }],
-      warnings: [{ code: 'OPEN_CASH_SESSIONS', message: 'Hay 1 caja de ese mes todavía abierta' }],
+      warnings: [{ code: 'NO_FIXED_EXPENSES', message: 'No hay gastos fijos registrados en ese mes' }],
       closed: cierre(), totals: cierre().totals, byBranch: cierre().byBranch,
       businessDates: { organization: '2026-11-19', byBranch: [{ branchId: ID(2), date: '2026-11-19' }] },
       openCashSessions: [{ id: ID(6), branchId: ID(2), registerCode: 'C1', openedAt: AHORA }],
       fixedExpensesCount: 2,
+      signature: 'approver',
     }],
     ['GET /me/shift', Shift, {
       asOf: AHORA, canSeeCash: true, canSeeEntries: false, pendingIntakes: null,
@@ -119,17 +120,17 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
     }],
     ['GET /members/:id/day-passes', MemberDayPasses, { today: null, total: 0, recent: [] }],
     ['POST /access/attempts', AccessAttemptResult, {
-      outcome: 'DENIED', reason: 'MEMBERSHIP_SUSPENDED', warning: null, consumedVisit: false, policyVersion: '3.1.0', decisionId: ID(8),
+      outcome: 'DENIED', reason: 'MEMBERSHIP_SUSPENDED', warning: null, consumedVisit: false, reentry: false, policyVersion: '4.0.0', decisionId: ID(8),
       attendanceId: null, overridable: true, outstandingCents: '65000', minimumCents: '65000', periodsOwed: 1,
     }],
     ['POST /access/face (no reconoció)', FaceAccessResult, { reconocido: false, motivo: 'No te reconocí. Pasa con recepción.', sinRostro: false }],
     ['POST /access/face (reconoció)', FaceAccessResult, {
       reconocido: true, memberId: ID(3), memberName: 'Ana López', outcome: 'GRANTED', reason: null, warning: 'Es su última visita del paquete',
-      consumedVisit: true, decisionId: ID(8), outstandingCents: null, debeVolverAFirmar: false,
+      consumedVisit: true, reentry: false, decisionId: ID(8), outstandingCents: null, debeVolverAFirmar: false,
     }],
     ['POST /access/attempts/preview', AccessAttemptPreview, {
-      outcome: 'DENIED', reason: 'MEMBERSHIP_SUSPENDED', warning: null, wouldConsumeVisit: false, overridable: true, policyVersion: '3.1.0',
-      outstandingCents: '65000', minimumCents: '65000', periodsOwed: 1, creditCents: '20000', policy: { requiresReason: true, hasBiometric: false },
+      outcome: 'DENIED', reason: 'MEMBERSHIP_SUSPENDED', warning: null, wouldConsumeVisit: false, reentry: false, overridable: true, policyVersion: '4.0.0',
+      outstandingCents: '65000', minimumCents: '65000', periodsOwed: 1, creditCents: '20000', policy: { requiresReason: true, hasBiometric: false, faceRequired: false },
     }],
     ['POST /access/decisions/:id/collect', CollectAndOpenResult, {
       paymentId: ID(12), folio: 'CEN-000122', decisionId: ID(9), attendanceId: ID(10), creditAppliedCents: '20000',
@@ -171,10 +172,10 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
       ...turnoAbierto(), status: 'CLOSED', closedByUserId: ID(1), closedByName: 'Recepción Centro', expectedCashCents: '150000', countedCashCents: '149000',
       varianceCents: '-1000', varianceReason: 'Cambio de más', closedAt: AHORA, varianceLabel: '-$10.00', varianceKind: 'SHORT',
     }],
-    ['GET /products', ProductList, { products: [{ id: ID(14), sku: 'AGUA-1L', name: 'Agua 1 L', priceCents: '2500', priceLabel: '$25.00', tracksInventory: true, isActive: true }] }],
+    ['GET /products', ProductList, { products: [{ id: ID(14), sku: 'AGUA-1L', name: 'Agua 1 L', priceCents: '2500', priceLabel: '$25.00', memberPriceCents: '2000', costCents: '1200', tracksInventory: true, isActive: true }], memberPricing: null }],
     ['POST /pos/sales', PosSale, {
       id: ID(15), branchId: ID(2), cashSessionId: ID(6), memberId: null, status: 'COMPLETED', totalCents: '5000', totalLabel: '$50.00', method: 'CASH',
-      folio: 'CEN-000123', voidReason: null, soldAt: AHORA, businessDate: '2026-11-19', lines: [{ productId: ID(14), quantity: 2, unitPriceCents: '2500', lineTotalCents: '5000' }],
+      folio: 'CEN-000123', voidReason: null, soldAt: AHORA, businessDate: '2026-11-19', lines: [{ productId: ID(14), quantity: 2, unitPriceCents: '2500', lineTotalCents: '5000', priceKind: 'PUBLIC' }],
     }],
     ['GET /portal/statement', PortalStatement, {
       computedAt: AHORA, outstandingCents: '0', creditCents: '0', netBalanceCents: '0', netBalanceLabel: '$0.00',
@@ -295,7 +296,11 @@ function modulos() {
 function cierre() {
   return {
     id: ID(40), month: '2026-10',
-    totals: { collectedCents: '1250050', accruedCents: '1100000', deferredCents: '150050', mrrCents: '900000', outstandingCents: '42000', overdueCents: '12000', activeMembers: 248, cashExpensesCents: '-3000', fixedExpensesCents: '-400000', profitCents: '697000' },
+    totals: { collectedCents: '1250050', accruedCents: '1100000', deferredCents: '150050', mrrCents: '900000', outstandingCents: '42000', overdueCents: '12000', activeMembers: 248, cashExpensesCents: '-3000', fixedExpensesCents: '-400000', profitCents: '697000',
+      // Foto completa (fase 3 · 3.7, D-22): lo demás del Tablero y lo de Movimientos.
+      version: 2, cashOverageCents: '0', ownerDrawsCents: '150000', costOfGoodsCents: '0', membersBehind: 2, membersBase: 250,
+      cash: { incomeCents: '1250050', refundsCents: '0', expensesCents: '-3000', shortageCents: '0', overageCents: '0', netCents: '1247050', toBankCents: '0', creditNotesCents: '0', fixedExpensesCents: '-400000', profitCents: '847050', byMethod: { CASH: '1250050' } },
+    },
     byBranch: [{ branchId: ID(2), collectedCents: '1250050', accruedCents: '1100000', outstandingCents: '42000', activeMembers: 248 }],
     closedAt: AHORA, closedByUserId: ID(8), closedByName: 'Gerencia Demo', approvedByUserId: ID(9), approvedByName: 'Dueña Demo', note: null,
   };
@@ -305,18 +310,18 @@ function tablero() {
   return {
     range: { from: '2026-11-01', to: '2026-11-20' },
     closed: null,
-    priorAdjustmentsCents: '0',
+    adjustments: [{ month: '2026-09', cents: '-750000', count: 2 }],
     money: {
       collectedCents: '1250000', collectedLabel: '$12,500.00', accruedCents: '980000', accruedLabel: '$9,800.00',
       deferredCents: '270000', deferredLabel: '$2,700.00', mrrCents: '1500000', mrrLabel: '$15,000.00',
-      cashExpensesCents: '-35000', cashOverageCents: '1000', fixedExpensesCents: '-400000', profitCents: '545000',
+      cashExpensesCents: '-35000', cashOverageCents: '1000', fixedExpensesCents: '-400000', profitCents: '545000', ownerDrawsCents: '0', costOfGoodsCents: '-12000',
     },
     previous: { from: '2026-10-01', to: '2026-10-20', collectedCents: '1100000', accruedCents: '900000', profitCents: '500000' },
     portfolio: { outstandingCents: '130000', overdueCents: '65000', delinquencyRate: 0.5, membersBehind: 2, membersBase: 248 },
     activeMembers: 246,
     openCashSessions: [{ id: ID(6), branchId: ID(2), registerCode: 'C1', openedAt: AHORA, openingFloatCents: '50000' }],
     branches: [{ branchId: ID(2), collectedCents: '1250000', accruedCents: '980000', activeMembers: 246, outstandingCents: '130000' }, { branchId: null, collectedCents: '0', accruedCents: '0', activeMembers: 0, outstandingCents: '0' }],
-    notes: { packsValuedByListPrice: 1, warning: '1 paquete(s) de visitas sin cargo enlazado se valoraron a precio de lista.' },
+    notes: { packsValuedByListPrice: 1, warning: '1 paquete(s) de visitas sin cargo enlazado se valoraron a precio de lista.', soldWithoutCost: 0 },
   };
 }
 
@@ -339,7 +344,7 @@ function pulse() {
       pendingApprovals: { count: 1, oldest: AHORA },
       sensitiveToday: 0,
     },
-    owed: { overdueCents: '65000', outstandingCents: '130000', membersBehind: 2 },
+    owed: { overdueCents: '65000', outstandingCents: '130000', membersBehind: 2, byBranch: [{ branchId: ID(2), outstandingCents: '130000', membersBehind: 2 }] },
     members: { active: 246, base: 248 },
     branches: [{ branchId: ID(2), todayCents: '120000', yesterdaySameTimeCents: '90000', visits: 37 }],
     openCash: [{ id: ID(6), branchId: ID(2), registerName: 'Caja 1', openedByName: 'Recepción Centro', openedByUserId: ID(1), openedAt: AHORA }],

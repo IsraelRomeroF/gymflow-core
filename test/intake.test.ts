@@ -88,6 +88,11 @@ describe('huecos de consentimiento', () => {
       .toEqual([{ kind: 'NOT_PUBLISHED', consentType: 'PRIVACY_NOTICE', version: '1.0.0' }]);
   });
 
+  it('un borrador más nuevo no detiene las altas mientras haya un texto publicado (D-25)', () => {
+    const enEsperaDeFirma = [doc({ status: 'DRAFT', version: '2.0.0' }), ...VIGENTES];
+    expect(consentGaps(enEsperaDeFirma, aceptaTodo)).toEqual([]);
+  });
+
   it('detecta que firmó una versión anterior', () => {
     const viejo = [{ ...aceptaTodo[0]!, version: '0.9.0' }, aceptaTodo[1]!];
     expect(consentGaps(VIGENTES, viejo)).toEqual([

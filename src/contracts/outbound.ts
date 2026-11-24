@@ -18,9 +18,10 @@ import { Fecha, Id, Instante } from './comun.js';
  *  - `PAYMENT_OVERDUE`      tiene un cargo vencido (hasta 7 días);
  *  - `PAYMENT_DUE_SOON`     un cargo suyo vence en 1 a 3 días, o su membresía se renueva (y nace su cuota) en 1 a 3 días;
  *  - `MEMBERSHIP_ENDING`    su plan prepagado termina en 1 a 3 días y no se renueva solo;
- *  - `WE_MISS_YOU`          Retención lo tiene en riesgo (no arrancó, afloja o dejó de venir).
+ *  - `WE_MISS_YOU`          Retención lo tiene en riesgo (no arrancó, afloja o dejó de venir);
+ *  - `PRICE_CHANGE`         su plan cambió de precio y lo pagará en su siguiente pago (D-19, bloque 3.6).
  */
-export const OUTBOUND_KINDS = ['MEMBERSHIP_SUSPENDED', 'PAYMENT_OVERDUE', 'PAYMENT_DUE_SOON', 'MEMBERSHIP_ENDING', 'WE_MISS_YOU'] as const;
+export const OUTBOUND_KINDS = ['MEMBERSHIP_SUSPENDED', 'PAYMENT_OVERDUE', 'PAYMENT_DUE_SOON', 'MEMBERSHIP_ENDING', 'WE_MISS_YOU', 'PRICE_CHANGE'] as const;
 export const OutboundKind = z.enum(OUTBOUND_KINDS);
 export type OutboundKind = z.infer<typeof OutboundKind>;
 
@@ -68,13 +69,14 @@ export const OutboundMessage = z.object({
 });
 export type OutboundMessage = z.infer<typeof OutboundMessage>;
 
-/** Cuántos pendientes hay de cada motivo. Siempre las cinco llaves. */
+/** Cuántos pendientes hay de cada motivo. Siempre todas las llaves. */
 export const OutboundCounts = z.object({
   MEMBERSHIP_SUSPENDED: z.number().int(),
   PAYMENT_OVERDUE: z.number().int(),
   PAYMENT_DUE_SOON: z.number().int(),
   MEMBERSHIP_ENDING: z.number().int(),
   WE_MISS_YOU: z.number().int(),
+  PRICE_CHANGE: z.number().int(),
 });
 export type OutboundCounts = z.infer<typeof OutboundCounts>;
 

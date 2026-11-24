@@ -39,9 +39,19 @@ export const Dashboard = z.object({
   /** Fin semiabierto: `to` ya no entra. */
   range: RangoDeFechas,
   /** El rango es un mes ya cerrado (cierre de mes): sus cifras quedan fijas. */
-  closed: z.object({ closedAt: Instante, closedByUserId: Id, note: z.string().nullable() }).nullable(),
-  /** Lo que entró en el rango pero pertenece a meses ya cerrados («ajuste de octubre»). */
-  priorAdjustmentsCents: Centavos,
+  /**
+   * `fromSnapshot`: las cifras de dinero, cartera y sucursales salen de la FOTO
+   * del cierre (D-22) y ya no cambian. Es `false` solo cuando la foto es
+   * anterior a la foto completa (3.7) o no cubre las sedes de quien mira.
+   */
+  closed: z.object({ closedAt: Instante, closedByUserId: Id, note: z.string().nullable(), fromSnapshot: z.boolean() }).nullable(),
+  /**
+   * Lo que llegó tarde a un mes ya cerrado y se anotó en este periodo (D-22):
+   * «ajuste de octubre». `cents` con el signo del gasto: positivo resta de la
+   * ganancia, negativo corrige un gasto de más. Sustituye a
+   * `priorAdjustmentsCents`, que sumaba cobros por fecha de recepción.
+   */
+  adjustments: z.array(z.object({ month: z.string(), cents: Centavos, count: z.number().int() })),
   money: z.object({
     collectedCents: Centavos, collectedLabel: z.string(),
     accruedCents: Centavos, accruedLabel: z.string(),
@@ -55,6 +65,10 @@ export const Dashboard = z.object({
     fixedExpensesCents: Centavos,
     /** Utilidad contable: lo ganado menos gastos de caja y fijos. */
     profitCents: Centavos,
+    /** Retiros del dueño de los meses del periodo: se informan, NO restan de la utilidad (D-23). */
+    ownerDrawsCents: Centavos,
+    /** Costo de lo vendido en la tienda en el periodo (negativo): la utilidad ya lo resta (D-21). */
+    costOfGoodsCents: Centavos,
   }),
   /** El periodo anterior de la misma duración (o las mismas fechas del mes pasado con `compare=mes`). */
   previous: z.object({ from: Fecha, to: Fecha, collectedCents: Centavos, accruedCents: Centavos, profitCents: Centavos }),
@@ -75,6 +89,8 @@ export const Dashboard = z.object({
     packsValuedByListPrice: z.number().int(),
     /** Solo si hay alguno: por qué la cifra ganada es aproximada. */
     warning: z.string().optional(),
+    /** Piezas vendidas en el periodo de productos sin costo registrado: su costo no se pudo restar (D-21). */
+    soldWithoutCost: z.number().int(),
   }),
 });
 export type Dashboard = z.infer<typeof Dashboard>;
@@ -84,6 +100,32 @@ export type Dashboard = z.infer<typeof Dashboard>;
 /** Un mes `AAAA-MM`. */
 export const Mes = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mes como AAAA-MM');
 export type Mes = z.infer<typeof Mes>;
+
+/**
+ * Lo de Movimientos (caja) del mes, dentro de la foto completa (3.7, D-22):
+ * las mismas cifras y los mismos signos que `GET /reports/daily`.
+ */
+export const CajaDelCierre = z.object({
+  incomeCents: Centavos, refundsCents: Centavos, expensesCents: Centavos,
+  shortageCents: Centavos, overageCents: Centavos, netCents: Centavos, toBankCents: Centavos,
+  creditNotesCents: Centavos, fixedExpensesCents: Centavos, profitCents: Centavos,
+  byMethod: z.record(z.string(), Centavos),
+});
+export type CajaDelCierre = z.infer<typeof CajaDelCierre>;
+
+/** Lo que la foto completa (3.7) agrega al total y a cada sucursal. Las fotos anteriores no lo traen. */
+const FotoCompleta = {
+  /** Sobrantes de los cortes: no suman, se informan «por aclarar». */
+  cashOverageCents: Centavos.optional(),
+  /** Retiros del dueño del mes: no restan de la utilidad (D-23). */
+  ownerDrawsCents: Centavos.optional(),
+  /** Costo de lo vendido en la tienda (negativo): la utilidad ya lo resta (D-21). */
+  costOfGoodsCents: Centavos.optional(),
+  membersBehind: z.number().int().optional(),
+  membersBase: z.number().int().optional(),
+  /** Movimientos del mes (caja). */
+  cash: CajaDelCierre.optional(),
+};
 
 /** Las cifras que congela el cierre: las del Tablero de ese mes para todo el gimnasio. */
 export const TotalesDelCierre = z.object({
@@ -100,6 +142,9 @@ export const TotalesDelCierre = z.object({
   fixedExpensesCents: Centavos.optional(),
   /** Utilidad contable del mes. Las fotos anteriores a 1.9 no lo traen. */
   profitCents: Centavos.optional(),
+  /** 2 = foto completa (3.7): con ella el Tablero y Movimientos sirven el mes cerrado desde la foto. */
+  version: z.number().int().optional(),
+  ...FotoCompleta,
 });
 export type TotalesDelCierre = z.infer<typeof TotalesDelCierre>;
 
@@ -109,6 +154,14 @@ const SucursalDelCierre = z.object({
   accruedCents: Centavos,
   outstandingCents: Centavos,
   activeMembers: z.number().int(),
+  // Foto completa (3.7): lo demás del Tablero, por sucursal. `null` (sin sucursal) no lo trae.
+  deferredCents: Centavos.optional(),
+  mrrCents: Centavos.optional(),
+  overdueCents: Centavos.optional(),
+  cashExpensesCents: Centavos.optional(),
+  fixedExpensesCents: Centavos.optional(),
+  profitCents: Centavos.optional(),
+  ...FotoCompleta,
 });
 
 /**
@@ -168,6 +221,12 @@ export const MonthlyClosePreview = z.object({
   openCashSessions: z.array(z.object({ id: Id, branchId: Id, registerCode: z.string(), openedAt: Instante })),
   /** Gastos fijos registrados en el mes (vigentes). */
   fixedExpensesCount: z.number().int(),
+  /**
+   * Cómo se firma este cierre (D-23): `approver`, lo cierra la gerencia y firma
+   * la dueña; `own-password`, no hay gerente que administre y lo cierra la
+   * dueña con su contraseña.
+   */
+  signature: z.enum(['approver', 'own-password']),
 });
 export type MonthlyClosePreview = z.infer<typeof MonthlyClosePreview>;
 
@@ -234,7 +293,11 @@ export const Pulse = z.object({
     /** Operaciones «para revisar» de hoy (bitácora). */
     sensitiveToday: z.number().int(),
   }),
-  owed: z.object({ overdueCents: Centavos, outstandingCents: Centavos, membersBehind: z.number().int() }),
+  owed: z.object({
+    overdueCents: Centavos, outstandingCents: Centavos, membersBehind: z.number().int(),
+    /** La deuda por sucursal, en cifras y sin nombres (D-25). La sede es la de casa del socio. */
+    byBranch: z.array(z.object({ branchId: Id.nullable(), outstandingCents: Centavos, membersBehind: z.number().int() })),
+  }),
   /** `base` = los vivos más los suspendidos: la misma base que el Tablero para «N de M atrasados». */
   members: z.object({ active: z.number().int(), base: z.number().int() }),
   branches: z.array(z.object({ branchId: Id, todayCents: Centavos, yesterdaySameTimeCents: Centavos, visits: z.number().int() })),
@@ -308,3 +371,73 @@ export const Shift = z.object({
   })),
 });
 export type Shift = z.infer<typeof Shift>;
+
+// ── Gastos fijos y retiros del dueño: finance/expenses.routes.ts (3.7) ──────
+
+/**
+ * Un gasto del gimnasio. `category = 'OWNER_DRAW'` es un «Retiro del dueño»:
+ * se anota y se ve, pero no resta de la ganancia (D-23). Con `adjustsMonth`
+ * es un «ajuste de ‹mes›»: llegó tarde a un mes cerrado y cuenta en `month`,
+ * el mes en curso (D-22); si además trae `adjustsExpenseId`, corrige (en
+ * negativo) ese gasto del mes cerrado.
+ */
+export const Expense = z.object({
+  id: Id,
+  branchId: Id.nullable(),
+  category: z.string(),
+  description: z.string(),
+  /** Negativo solo en el ajuste que corrige un gasto de un mes cerrado. */
+  amountCents: Centavos,
+  month: Mes,
+  createdAt: Instante,
+  voidedAt: Instante.nullable(),
+  voidReason: z.string().nullable(),
+  adjustsMonth: Mes.nullable(),
+  adjustsExpenseId: Id.nullable(),
+  /** Este gasto (de un mes cerrado) ya se corrigió con un ajuste anotado en ese mes. */
+  correctedInMonth: Mes.nullable(),
+});
+export type Expense = z.infer<typeof Expense>;
+
+/** `GET /expenses?month=AAAA-MM`. `closed`: el mes está cerrado y lo nuevo va como ajuste al mes en curso (`currentMonth`). */
+export const ExpenseList = z.object({ month: Mes, closed: z.boolean(), currentMonth: Mes, expenses: z.array(Expense) });
+export type ExpenseList = z.infer<typeof ExpenseList>;
+
+// ── La tienda, para quien consulta: GET /reports/store (3.7, D-25) ──────────
+
+/**
+ * Ventas y existencias de la tienda en cifras. La dueña las consulta sin
+ * operar el punto de venta. `month` va del día 1 a hoy (incluido).
+ */
+export const StoreSummary = z.object({
+  asOf: Instante,
+  today: z.object({ sales: z.number().int(), totalCents: Centavos }),
+  month: z.object({ from: Fecha, to: Fecha, sales: z.number().int(), totalCents: Centavos, voided: z.number().int() }),
+  /** Lo más vendido del mes (hasta 8), por importe. */
+  top: z.array(z.object({ productId: Id, name: z.string(), quantity: z.number().int(), totalCents: Centavos })),
+  /** Existencias de los productos activos que llevan inventario, de menos a más. */
+  stock: z.array(z.object({ productId: Id, branchId: Id.nullable(), name: z.string(), stock: z.number().int() })),
+  /** Cuántos productos activos hay y cuántos están agotados. */
+  products: z.object({ active: z.number().int(), outOfStock: z.number().int() }),
+});
+export type StoreSummary = z.infer<typeof StoreSummary>;
+
+// ── Lo que ve quien firma: GET /reports/signature-brief (3.7, D-25) ─────────
+
+/**
+ * `GET /reports/signature-brief?resourceType=&resourceId=`: resumen de a quién
+ * toca la operación que se va a firmar, sin abrir su expediente ni decir su
+ * nombre: desde cuándo es socio, cuánto debe y cuántas correcciones de dinero
+ * lleva (devoluciones, cargos anulados y cargos con descuento o condonación).
+ * `member` es `null` cuando la operación no toca a un socio (un retiro de
+ * caja, el cierre de mes).
+ */
+export const SignatureBrief = z.object({
+  member: z.object({
+    memberSince: Fecha,
+    outstandingCents: Centavos,
+    overdueCents: Centavos,
+    corrections: z.object({ last90Days: z.number().int(), total: z.number().int() }),
+  }).nullable(),
+});
+export type SignatureBrief = z.infer<typeof SignatureBrief>;

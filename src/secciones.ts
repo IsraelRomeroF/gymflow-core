@@ -51,7 +51,7 @@ export const LOCKABLE_SECTIONS: readonly SeccionLiberable[] = [
   { key: 'modulos', name: 'Módulos', group: 'direccion', text: 'Encender y apagar secciones del gimnasio.', permissions: ['settings:org', 'settings:branch'], menuPermissions: ['settings:org', 'settings:branch'], menuRoles: ['OWNER'] },
   { key: 'bitacora', name: 'Bitácora', group: 'cumplimiento', text: 'Quién hizo qué, con fecha y motivo.', permissions: ['audit:read', 'audit:export'], menuPermissions: ['audit:read'] },
   { key: 'biometria', name: 'Biometría', group: 'cumplimiento', text: 'Enrolamientos de rostro y huella y sus borrados.', permissions: ['audit:read'], menuPermissions: ['audit:read'] },
-  { key: 'consentimientos', name: 'Textos de consentimiento', group: 'cumplimiento', text: 'Publicar el aviso de privacidad y el reglamento.', permissions: ['settings:consent:manage'], menuPermissions: ['members:consent:read'] },
+  { key: 'consentimientos', name: 'Textos de consentimiento', group: 'cumplimiento', text: 'Publicar el aviso de privacidad y el reglamento.', permissions: ['settings:consent:manage'], menuPermissions: ['members:consent:read', 'settings:consent:read'] },
 ];
 
 export const LOCKABLE_SECTION_KEYS: ReadonlySet<string> = new Set(LOCKABLE_SECTIONS.map((s) => s.key));

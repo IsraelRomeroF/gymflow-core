@@ -45,7 +45,7 @@ Tus derechos (ARCO)
 Puedes pedir acceso, rectificación, cancelación u oposición sobre tus datos, o revocar tu consentimiento, en recepción, desde tu portal de socio o escribiendo a [CORREO DE PRIVACIDAD]. Desde tu portal de socio puedes descargar tus datos, retirar permisos y pedir correcciones. Te responderemos en un plazo máximo de 20 días hábiles y, si procede, lo haremos efectivo en los 15 días hábiles siguientes.
 
 ¿Cuánto tiempo guardamos tus datos?
-Mientras seas socio. Después de tu baja los conservamos ${g.mesesDeConservacion ? `${g.mesesDeConservacion} meses` : '[MESES DE CONSERVACIÓN TRAS LA BAJA]'} y luego se anonimizan; lo contable se conserva el tiempo que exige la ley fiscal.
+Mientras seas socio. Después de tu baja los conservamos ${g.mesesDeConservacion ? `${g.mesesDeConservacion} meses` : '[MESES DE CONSERVACIÓN TRAS LA BAJA]'} y luego se anonimizan; lo contable se conserva el tiempo que exige la ley fiscal. Si registraste tu rostro, deja de usarse el día de tu baja y su plantilla se borra a los 30 días si no regresas.
 
 Cambios a este aviso
 Cualquier cambio te lo daremos a conocer en recepción y en tu portal de socio.
@@ -83,7 +83,7 @@ Autorizo a ${g.razonSocial} ("${g.nombreComercial}") a registrar mi rostro con e
 
 - Mi rostro se registra con la cámara de recepción. La foto no se guarda: solo una plantilla, que es una serie de números que sirve para reconocerme. La plantilla se guarda cifrada en el servidor del gimnasio, ligada a este consentimiento, y no se comparte con terceros.
 - Se usa únicamente en la Estación de acceso de esa sucursal: me paro frente a la cámara, hago el movimiento que me pide y, si me reconoce, la entrada se decide igual que en recepción (membresía, horario y pagos).
-- Es opcional: si no la autorizo, recepción me da acceso por otro medio sin ningún costo.
+- Es opcional: si no la autorizo, entro por recepción sin ningún costo. Si el gimnasio exige el rostro para entrar, cada una de mis visitas la autoriza la gerencia en recepción.
 - Puedo revocar este consentimiento cuando quiera en recepción; la plantilla se borra en el acto y queda constancia del borrado. Si dejo de ser socio, mi rostro deja de reconocerse.
 
 Este consentimiento es adicional al Aviso de privacidad, que conozco.`,

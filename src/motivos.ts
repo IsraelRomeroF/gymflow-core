@@ -118,6 +118,20 @@ export const MOTIVOS = {
       otro,
     ],
   },
+  /**
+   * La gerencia autoriza la entrada de quien no tiene su rostro registrado
+   * (fase 3, bloque 3.3; D-06). Es por visita: el motivo dice por qué hoy.
+   */
+  entradaSinRostro: {
+    accion: 'Autorizar la entrada sin rostro',
+    motivos: [
+      { codigo: 'NO_QUIERE_BIOMETRIA', texto: 'No quiere registrar su rostro' },
+      { codigo: 'LO_REGISTRA_DESPUES', texto: 'Registra su rostro en su próxima visita' },
+      { codigo: 'NO_SE_PUDO_REGISTRAR', texto: 'No se pudo registrar: la cámara o el motor no funcionan' },
+      { codigo: 'MENOR_SIN_TUTOR', texto: 'Menor de edad: falta que su tutor firme' },
+      otro,
+    ],
+  },
   /** El corte no cuadra (7-10). El texto sigue siendo obligatorio: el chip solo lo empieza. */
   descuadre: {
     accion: 'La caja no cuadra',

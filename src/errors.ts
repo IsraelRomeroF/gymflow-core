@@ -55,6 +55,9 @@ export const ERROR_REASONS = {
   MEMBERSHIP_NOT_ACTIVE: 'La operación pide una membresía vigente y no lo está.',
   DEBT_PENDING: 'Debe su membresía: primero se cobra o se decide el adeudo.',
   PLAN_NOT_SOLD_AT_BRANCH: 'Ese plan no se vende en la sucursal elegida.',
+  // ── Precios (bloque 3.6, D-19) ──
+  PRICE_CHANGE_NEEDS_DECISION: 'El plan tiene socios que conservan su precio: el cambio de precio debe decir si también les cambia (`priceChange.includeProtected`).',
+  PRICE_CHANGED_MEANWHILE: 'El precio del plan ya no es el que mostraba la pantalla: recargar y volver a revisar a quién toca.',
   // ── Pase del día (bloque 1.8) ──
   DAY_PASS_ALREADY_SOLD: 'Ya tiene su pase de hoy en esa sucursal.',
   DAY_PASS_MUST_BE_PAID: 'El pase del día se cobra al venderlo: falta la forma de pago.',
@@ -64,13 +67,18 @@ export const ERROR_REASONS = {
   DUPLICATE_MEMBER: 'El alta coincide con socios que ya existen: la respuesta trae `candidates`.',
   DUPLICATE_EMAIL: 'Ese correo ya tiene una cuenta.',
   // ── Captación (bloque 2.4) ──
-  PHONE_IN_USE: 'Ese celular ya es el de otro socio activo: la respuesta trae `member` (9-02).',
+  PHONE_IN_USE: 'Ese celular ya es el de otro socio: se puede compartir (D-09), pero hay que anotar quién es el responsable del número.',
+  GUARDIAN_REQUIRED: 'El alta es de un menor de 15 a 17 años: se aprueba cuando su tutor firma en el mostrador (D-10).',
   PROSPECT_ALREADY_OPEN: 'Ya hay un interesado abierto con ese celular y ese nombre: la respuesta trae `existing`.',
   ALREADY_MEMBER: 'Esa persona ya es socio (mismo celular o correo, y nombre): la respuesta trae `existing`.',
   INTAKE_ALREADY_REVIEWED: 'Esa alta digital ya la revisó otra persona: la respuesta dice quién.',
   PROSPECT_CLOSED: 'El interesado ya está cerrado (se inscribió o se perdió).',
   // ── Puerta ──
   ALREADY_RESOLVED: 'Ese rechazo ya lo resolvió otra persona: no se registra otra entrada.',
+  FACE_AUTHORIZATION_REQUIRED: 'No tiene su rostro registrado: esta entrada solo la autoriza la gerencia (D-06).',
+  TRIAL_PASS_ALREADY_USED: 'Ese celular (o esa persona) ya usó su pase de prueba: es uno por persona (D-08).',
+  TRIAL_PASS_NEEDS_PHONE: 'El pase de prueba se identifica por el celular: falta capturarlo en su ficha.',
+  TRIAL_PASS_NOT_FIRST_TIME: 'El pase de prueba es para quien viene por primera vez: ya tiene o tuvo plan, paquete o pase del día.',
   FACE_ENGINE_DOWN: 'El motor facial no contesta, rechaza el token o no cargó su modelo (503): no es «no vi tu rostro».',
   // ── Clases ──
   CLASS_FULL: 'La clase se llenó.',
@@ -85,6 +93,11 @@ export const ERROR_REASONS = {
   BRANCH_HAS_STAFF: 'La sucursal todavía tiene personal asignado: no se cierra.',
   // ── Cierre de mes ──
   MONTH_ALREADY_CLOSED: 'Ese mes ya está cerrado.',
+  // D-22 (bloque 3.7): las cifras de un mes cerrado quedan fijas.
+  MONTH_CLOSED: 'El mes al que corresponde ya está cerrado: se anota en el mes en curso como ajuste de ese mes.',
+  MONTH_HAS_OPEN_CASH: 'Queda una caja abierta con fecha de ese mes: no se cierra hasta cortarla.',
+  // D-25 (bloque 3.7): el aviso de privacidad lo firma la dueña.
+  NOTICE_SIGNATURE_STALE: 'El borrador cambió después de pedir la firma, o ya no hay una firma pedida.',
   // ── Consola de plataforma: cobro de GymFlow a las marcas (bloque 1.13) ──
   ORG_NOT_IN_USE: 'La marca no está en uso (sin liberar o suspendida): no se le factura.',
   MONTH_ALREADY_INVOICED: 'La marca ya tiene factura viva de ese mes: se anula antes de emitir otra.',
@@ -93,6 +106,13 @@ export const ERROR_REASONS = {
   AMOUNT_OVER_BALANCE: 'El pago es mayor que lo que la factura todavía debe.',
   INVOICE_HAS_PAYMENTS: 'La factura tiene pagos registrados: primero se deshacen.',
   UNDO_WINDOW_CLOSED: 'Pasó el plazo para deshacer ese pago.',
+  // ── Consola de plataforma: cambios de precio con un mes de aviso (D-38, bloque 3.11) ──
+  PRICE_CHANGE_PENDING: 'Ese precio o ese plan ya tiene un cambio anunciado: se cancela antes de anunciar otro.',
+  PRICE_CHANGE_TOO_SOON: 'Un cambio de precio o de plan se avisa con al menos un mes: la fecha pedida es anterior.',
+  PRICE_CHANGE_CLOSED: 'Ese cambio anunciado ya aplicó o ya estaba cancelado.',
+  // ── Firmas: el «no» pegado a la operación (D-03, bloque 3.2) ──
+  APPROVAL_REPLY_REQUIRED: 'Esa operación ya se rechazó: para volver a pedirla hay que contestar ese «no» (`reply`).',
+  APPROVAL_REJECTED_RECENTLY: 'Esa operación se rechazó hace menos de 30 minutos: no se firma en el mostrador, solo desde la sesión de quien firma.',
 } as const;
 
 export type ErrorReason = keyof typeof ERROR_REASONS;

@@ -22,11 +22,52 @@ export const ApprovalApprover = z.object({
 });
 export type ApprovalApprover = z.infer<typeof ApprovalApprover>;
 
-/** `GET /approvals/approvers?permission=&branchId=&amountCents=`. */
+/** El «no» anterior de la misma operación (D-03): quién, cuándo y por qué. */
+export const ApprovalPreviousRejection = z.object({
+  requestId: Id,
+  at: Instante,
+  /** Quién dijo que no: con más de un firmante (apoderado, D-02), la tarjeta distingue «la rechazaste» de «la rechazó X». */
+  byUserId: Id.nullable(),
+  byName: z.string().nullable(),
+  reason: z.string().nullable(),
+});
+export type ApprovalPreviousRejection = z.infer<typeof ApprovalPreviousRejection>;
+
+/** La pregunta de quien firma en vez de un «no» (D-03): la solicitud sigue viva. */
+export const ApprovalQuestion = z.object({
+  text: z.string(),
+  at: Instante,
+  byUserId: Id.nullable(),
+  byName: z.string().nullable(),
+  /** Lo que contestó quien pidió; null mientras no conteste. */
+  answer: z.string().nullable(),
+  answeredAt: Instante.nullable(),
+});
+export type ApprovalQuestion = z.infer<typeof ApprovalQuestion>;
+
+/**
+ * Cómo está ESTA operación antes de pedirla (D-03): si ya la rechazaron en
+ * las últimas 24 horas, hasta cuándo no se firma en el mostrador y cuántas
+ * veces se puede pedir todavía en esta hora.
+ */
+export const ApprovalOperationState = z.object({
+  previousRejection: ApprovalPreviousRejection.nullable(),
+  /** Tras un «no»: hasta este instante solo se firma desde la sesión de quien firma. */
+  localLockedUntil: Instante.nullable(),
+  requestsUsed: z.number().int(),
+  requestsMax: z.number().int(),
+  /** Con el tope alcanzado: cuándo se puede volver a pedir. */
+  nextRequestAt: Instante.nullable(),
+});
+export type ApprovalOperationState = z.infer<typeof ApprovalOperationState>;
+
+/** `GET /approvals/approvers?permission=&branchId=&amountCents=&resourceId=`. */
 export const ApprovalApprovers = z.object({
   approvers: z.array(ApprovalApprover),
   requestTtlSeconds: z.number().int(),
   grantTtlSeconds: z.number().int(),
+  /** Solo si la consulta dijo de qué registro se trata (`resourceId`). */
+  operation: ApprovalOperationState.nullable(),
 });
 export type ApprovalApprovers = z.infer<typeof ApprovalApprovers>;
 
@@ -51,6 +92,14 @@ export const ApprovalRequest = z.object({
   notifiedCount: z.number().int(),
   /** La primera vez que la bandeja de alguien que puede firmar la mostró (29-05). */
   seenAt: Instante.nullable(),
+  /** El «no» anterior de esta misma operación, si lo hubo en las últimas 24 horas (D-03). */
+  previousRejection: ApprovalPreviousRejection.nullable(),
+  /** Lo que quien pide le contesta a ese «no»: obligatorio para volver a pedir. */
+  reply: z.string().nullable(),
+  /** Cuántas veces va esta operación en la última hora, contando esta (1 = la primera). */
+  attempt: z.number().int(),
+  /** Quien firma preguntó en vez de rechazar: la solicitud sigue pendiente. */
+  question: ApprovalQuestion.nullable(),
 });
 export type ApprovalRequest = z.infer<typeof ApprovalRequest>;
 
@@ -99,6 +148,10 @@ export const ApprovalHistoryItem = z.object({
   delivery: ApprovalDeliverySchema.nullable(),
   seenAt: Instante.nullable(),
   notifiedCount: z.number().int(),
+  /** D-03: el «no» anterior al que respondía, la respuesta, y lo que se preguntó y contestó. */
+  previousRejection: ApprovalPreviousRejection.nullable(),
+  reply: z.string().nullable(),
+  question: ApprovalQuestion.nullable(),
 });
 export type ApprovalHistoryItem = z.infer<typeof ApprovalHistoryItem>;
 

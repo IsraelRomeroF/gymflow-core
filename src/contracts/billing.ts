@@ -232,6 +232,17 @@ export const PaymentReceipt = z.object({
   coverage: z.object({ planName: z.string().nullable(), paidThrough: Fecha.nullable() }).nullable(),
   /** Quién lo cobró (3-05; bloque 2.2): `null` si lo registró el sistema (domiciliación, portal) o la cuenta ya no existe. */
   collectedByName: z.string().nullable(),
+  /**
+   * El aviso de un cambio de precio de su plan (D-19, bloque 3.6): `UPCOMING`
+   * si lo pagará desde su siguiente pago, `APPLIED` si este es el primer pago
+   * al precio nuevo. `null` (o ausente) si no hay nada que avisar.
+   */
+  priceNotice: z.object({
+    kind: z.enum(['UPCOMING', 'APPLIED']),
+    planName: z.string().nullable(),
+    fromPriceCents: Centavos,
+    toPriceCents: Centavos,
+  }).nullable().optional(),
 });
 export type PaymentReceipt = z.infer<typeof PaymentReceipt>;
 

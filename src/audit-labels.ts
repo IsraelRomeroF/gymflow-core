@@ -49,6 +49,8 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'pos.inventory.adjust': 'ajustó inventario',
   'expense.create': 'registró un gasto fijo{m}',
   'expense.void': 'anuló un gasto fijo{m}',
+  // D-22 (3.7): lo tardío de un mes cerrado se anota en el mes en curso.
+  'expense.adjust': 'anotó un ajuste de un mes cerrado{m}',
   // Membresías y paquetes
   'membership.sale': 'vendió una membresía{m}{a socio}',
   'membership.create': 'creó una membresía{para socio}',
@@ -89,6 +91,9 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'consent.revoke': 'revocó un consentimiento{de socio}',
   'consent.document.publish': 'publicó un texto de consentimiento',
   'consent.document.retire': 'retiró un texto de consentimiento',
+  // D-25 (3.7): el aviso de privacidad no se publica sin la firma de la dueña.
+  'consent.document.sign.request': 'pidió la firma de la dueña para publicar el aviso de privacidad',
+  'consent.document.sign.reject': 'no firmó el aviso de privacidad',
   // Borradores de los textos (1.10): corregir y borrar lo que todavía no firma nadie.
   'consent.document.update': 'corrigió el borrador de un texto de consentimiento',
   'consent.document.delete': 'borró el borrador de un texto de consentimiento',
@@ -97,6 +102,13 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // El ciclo ARCO completo (1.10): acreditar la identidad y hacer efectivo lo resuelto.
   'privacy.request.identity': 'acreditó la identidad en una solicitud ARCO{de socio}',
   'privacy.request.effect': 'hizo efectiva una solicitud ARCO{de socio}',
+  // Conservación (D-32; bloque 3.9): la lista mensual de exsocios por anonimizar y su firma.
+  'privacy.conservation.start': 'empezó a aplicar los plazos de conservación de datos',
+  'privacy.batch.prepare': 'armó la lista mensual de exsocios por anonimizar',
+  'privacy.batch.replace': 'cerró sin firma una lista de exsocios por anonimizar',
+  'privacy.batch.sign': 'firmó la lista mensual de exsocios por anonimizar',
+  'privacy.batch.sign.fail': 'falló la contraseña al firmar la lista de exsocios por anonimizar',
+  'privacy.batch.exclude': 'sacó{a socio} de la lista de exsocios por anonimizar',
   'portal.invite.issue': 'invitó{a socio} al portal',
   'portal.sessions.revoke': 'cerró el portal en los teléfonos de {socio}',
   'intake.approve': 'aprobó el alta digital{de socio}',
@@ -107,6 +119,9 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'members.import.cancel': 'canceló una importación de socios',
   // Captación (2.4): correcciones guardadas sin aprobar, y el interesado de punta a punta.
   'intake.correct': 'guardó correcciones en un alta digital sin aprobarla',
+  // Altas (3.4): completar lo vacío de la ficha (D-11) y el responsable del celular compartido o tutor (D-09, D-10).
+  'member.complete': 'completó datos que faltaban en la ficha de {socio}',
+  'member.responsible': 'anotó al responsable del celular de {socio}',
   'prospect.create': 'registró a un interesado',
   'prospect.close': 'cerró a un interesado que no se inscribió',
   'prospect.reopen': 'reabrió a un interesado',
@@ -122,6 +137,10 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // Acceso
   'access.manual_grant': 'dejó pasar por excepción{a socio}',
   'access.manual_entry': 'registró una entrada por el mostrador{de socio} (excepción)',
+  // Fase 3, bloque 3.3 (D-06, D-08)
+  'access.entry.authorize_without_face': 'autorizó la entrada sin rostro{de socio}',
+  'access.face_rule.change': 'cambió la regla de entrar solo con rostro',
+  'access.trial_pass.grant': 'dio un pase de prueba{a socio}',
   'access.biometric.enroll': 'registró la biometría{de socio}',
   'access.biometric.revoke': 'revocó la biometría{de socio}',
   'access.biometric.template_deleted': 'confirmó el borrado de una plantilla biométrica{de socio}',
@@ -156,6 +175,9 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // Catálogo y sucursales
   'catalog.plan.create': 'creó un plan',
   'catalog.plan.update': 'cambió un plan',
+  'catalog.plan.price_change': 'cambió el precio de un plan para sus socios en su siguiente pago',
+  'catalog.price_protection.set': 'marcó que conserva su precio la membresía{de socio}',
+  'catalog.price_protection.clear': 'quitó la marca de que conserva su precio a la membresía{de socio}',
   'branch.create': 'abrió una sucursal',
   'branch.update': 'cambió una sucursal',
   // Cerrar y reabrir una sede con su motivo (1.14): hoy la API asienta `branch.update`.
@@ -200,6 +222,10 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'approval.remote.cancel': 'canceló una solicitud de autorización{m}',
   'approval.remote.expire': 'dio por vencida, sin respuesta, una solicitud de autorización{m}',
   'approval.pause': 'pausó las firmas de {persona|una persona} por intentos fallidos',
+  // D-03 (bloque 3.2): el «no» pegado a la operación y «Preguntar».
+  'approval.remote.ask': 'preguntó antes de autorizar una solicitud{m}',
+  'approval.remote.answer': 'contestó lo que le preguntaron sobre una solicitud{m}',
+  'approval.local.after_reject': 'intentó firmar en el mostrador una operación{m} rechazada hace menos de 30 minutos',
   'audit.export': 'exportó la bitácora',
   'report.month.close': 'cerró el mes',
   // Plataforma (GymFlow sobre la marca)
@@ -208,6 +234,17 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'platform.service.activate': 'GymFlow liberó el software',
   'platform.service.suspend': 'GymFlow suspendió el software',
   'platform.service.resume': 'GymFlow reanudó el servicio',
+  // D-37 (bloque 3.11): la escalera de cobranza. Suspender a los 15 días de atraso ya no lo confirma una persona.
+  'platform.service.auto_suspend': 'GymFlow suspendió el servicio por falta de pago{m}, sin intervención de nadie',
+  'platform.notice.send': 'GymFlow le avisó al dueño{m}',
+  'platform.notice.deliver': 'quedó constancia de que el dueño recibió un aviso de GymFlow',
+  'platform.collections.hold': 'GymFlow dio una prórroga antes de suspender por adeudo',
+  'platform.collections.run': 'corrió la cobranza de GymFlow',
+  // D-38 (bloque 3.11): cambios de precio o de plan con un mes de aviso.
+  'platform.plan.version': 'GymFlow aplicó el cambio anunciado de su plan',
+  'platform.catalog.change.schedule': 'anunció un cambio de precio de GymFlow',
+  'platform.catalog.change.cancel': 'canceló un cambio de precio anunciado',
+  'platform.catalog.change.apply': 'aplicó un cambio de precio anunciado',
   'platform.module.grant': 'GymFlow contrató un módulo',
   'platform.module.revoke': 'GymFlow retiró un módulo',
   'platform.plan.assign': 'GymFlow asignó el plan contratado',
@@ -264,11 +301,15 @@ export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
     'payments.reverse', 'payment.refund', 'payments.refund.ledger', 'payment.refund.unrecorded', 'payments.chargeback', 'payments.chargeback.needs_review',
     'billing.waiver.apply', 'billing.charge.void', 'billing.charge.create', 'cash.withdraw', 'pos.sale.void', 'expense.void', 'visitpack.adjust',
     'membership.override.', 'member.archive', 'approval.self',
-    'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'member.anonymize', 'member.export', 'health.read',
+    'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'catalog.plan.price_change', 'catalog.price_protection.', 'member.anonymize', 'member.export', 'health.read',
     'staff.password_reset', 'staff.reactivate', 'staff.role', 'staff.rescue', 'staff.unlock', 'staff.permissions', 'settings.approval_policy', 'settings.module.',
-    'members.import.apply', 'privacy.request.', 'report.month.close',
+    'members.import.apply', 'privacy.request.', 'privacy.batch.', 'report.month.close',
     // Alguien probó una contraseña ajena para firmar, o la escalera pausó una firma (20-02, 24-11).
     'approval.local.fail', 'approval.pause',
+    // Encender o apagar «nadie entra sin su rostro» cambia quién entra (D-06, bloque 3.3).
+    'access.face_rule.change',
+    // Tras un «no», alguien quiso firmarla en el mostrador antes de los 30 minutos (D-03).
+    'approval.local.after_reject',
   ],
   socios: ['member.', 'members.import.', 'membership.', 'intake.', 'prospect.', 'consent.', 'privacy.', 'portal.', 'health.read'],
   acceso: ['access.'],

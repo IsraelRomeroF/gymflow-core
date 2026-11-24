@@ -117,6 +117,23 @@ export const INTAKE_CORRECTABLE_FIELDS = [
 ] as const;
 export type IntakeCorrectableField = (typeof INTAKE_CORRECTABLE_FIELDS)[number];
 
+// ── Celular compartido y responsable (D-09, fase 3) ─────────────────────────
+
+/**
+ * Quién responde por el celular de un socio que lo comparte con otro (mamá e
+ * hija, hermanos) y, si es menor, quién es su tutor (D-10). Un solo concepto:
+ * `SELF` el número es suyo · `MEMBER` es de otro socio · `ADULT` es de un
+ * adulto que no es socio (con nombre y, si es otro, su teléfono).
+ */
+export const RESPONSIBLE_KINDS = ['SELF', 'MEMBER', 'ADULT'] as const;
+export type ResponsibleKind = (typeof RESPONSIBLE_KINDS)[number];
+
+/** Lo que el alta mínima del mostrador deja para después (D-11): recepción solo llena lo que está vacío. */
+export const MEMBER_COMPLETABLE_FIELDS = [
+  'phoneE164', 'email', 'birthDate', 'emergencyContactName', 'emergencyContactPhone',
+] as const;
+export type MemberCompletableField = (typeof MEMBER_COMPLETABLE_FIELDS)[number];
+
 /** Días que un socio recién dado de alta conserva la franja «Para terminar su alta» (9-01). */
 export const ONBOARDING_DAYS = 7;
 

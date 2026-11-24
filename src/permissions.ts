@@ -147,6 +147,9 @@ export const PERMISSIONS = [
   p('access:monitor', 'Ver el monitor de acceso en vivo'),
   // NUNCA se bloquea por límite: se cuenta y se alerta (ver RoleLimits).
   p('access:manual_grant', 'Conceder acceso manualmente', { reason: true }),
+  // D-06 (fase 3, bloque 3.3): quien no tiene su rostro registrado solo entra si la
+  // gerencia autoriza ESA visita. No viene con el mostrador ni se le puede liberar.
+  p('access:entry:authorize', 'Autorizar la entrada de un socio sin rostro registrado', { reason: true, module: 'biometrics' }),
   p('access:credential:manage', 'Emitir o revocar credenciales'),
   p('access:biometric:enroll', 'Enrolar un biométrico', { reason: true, module: 'biometrics' }),
   p('access:device:manage', 'Gestionar dispositivos y gateways', { module: 'turnstile' }),
@@ -178,6 +181,9 @@ export const PERMISSIONS = [
   // Publicar un texto de consentimiento es un acto jurídico: lo firma el socio
   // y hay que poder demostrar quién lo puso en circulación y por qué.
   p('settings:consent:manage', 'Publicar y retirar textos de consentimiento', { reason: true }),
+  // D-25 (bloque 3.7): la dueña LEE los textos legales completos sin abrir expedientes
+  // (`members:consent:read` también abre lo firmado por cada socio: por eso es otro).
+  p('settings:consent:read', 'Leer los textos legales del gimnasio'),
   // ── plataforma ────────────────────────────────────────────────────────────
   // Lo tiene solo quien opera la PLATAFORMA (no pertenece a ningún gimnasio):
   // dar de alta una marca nueva con su dueña, su gerencia y su recepción.

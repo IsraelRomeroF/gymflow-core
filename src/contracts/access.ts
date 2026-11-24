@@ -23,6 +23,12 @@ export const AccessAttemptResult = z.object({
   /** «Tiene un pago pendiente…», «Es su última visita del paquete»: entra, pero hay que decírselo. */
   warning: z.string().nullable(),
   consumedVisit: z.boolean(),
+  /**
+   * REENTRADA (D-07): ya había entrado hoy en esta sucursal. Pasa y queda
+   * registrada, pero no cuenta otra asistencia ni descuenta otra visita
+   * (`attendanceId` es `null`).
+   */
+  reentry: z.boolean(),
   /** La versión de la regla con que se decidió (ACCESS_POLICY_VERSION). */
   policyVersion: z.string(),
   decisionId: Id,
@@ -43,6 +49,13 @@ export const ManualEntryPolicy = z.object({
   requiresReason: z.boolean(),
   /** El socio tiene rostro o huella vigente en esa sede. */
   hasBiometric: z.boolean(),
+  /**
+   * D-06: el gimnasio exige el rostro para entrar y esta sede usa biometría.
+   * Quien no lo tiene no entra por el mostrador con un motivo: cada visita la
+   * autoriza la gerencia (`POST /access/decisions/:id/grant` sobre su rechazo
+   * `BIOMETRIC_REQUIRED`).
+   */
+  faceRequired: z.boolean(),
 });
 export type ManualEntryPolicy = z.infer<typeof ManualEntryPolicy>;
 
@@ -58,6 +71,8 @@ export const AccessAttemptPreview = z.object({
   warning: z.string().nullable(),
   /** Si entrara, descontaría una visita de su paquete. */
   wouldConsumeVisit: z.boolean(),
+  /** Sería una reentrada (D-07): ya entró hoy aquí; no contaría ni descontaría. */
+  reentry: z.boolean(),
   overridable: z.boolean(),
   policyVersion: z.string(),
   /** Solo con rechazo por adeudo: lo que debe, lo mínimo para entrar y cuántas cuotas (bruto, sin el saldo a favor). */
@@ -88,6 +103,8 @@ export const FaceAccessResult = z.discriminatedUnion('reconocido', [
     reason: DenialReasonSchema.nullable(),
     warning: z.string().nullable(),
     consumedVisit: z.boolean(),
+    /** Reentrada (D-07): ya había entrado hoy aquí; no cuenta otra visita. */
+    reentry: z.boolean(),
     decisionId: Id,
     /** Solo con rechazo por adeudo. La Estación NO lo muestra (sin importes en la entrada); es para recepción. */
     outstandingCents: Centavos.nullable(),
@@ -177,6 +194,118 @@ export const CollectAndOpenResult = z.object({
   toEnterCents: Centavos.nullable(),
 });
 export type CollectAndOpenResult = z.infer<typeof CollectAndOpenResult>;
+
+/**
+ * `POST /access/decisions/:id/grant` (201): el paso concedido sobre un
+ * rechazo. Sobre un `BIOMETRIC_REQUIRED` es la AUTORIZACIÓN de la gerencia
+ * para esa visita (D-06).
+ */
+export const AccessGrantResult = z.object({
+  outcome: AccessOutcomeSchema,
+  /**
+   * Casi siempre `null` (pasó). Solo trae motivo si, ya autorizada la entrada
+   * sin rostro, la puerta dijo que no por otra cosa: nada quedó resuelto.
+   */
+  reason: DenialReasonSchema.nullable(),
+  decisionId: Id,
+  /** `null` si fue una reentrada (D-07). */
+  attendanceId: Id.nullable(),
+  reentry: z.boolean(),
+  consumedVisit: z.boolean(),
+  /** El rechazo que resolvió. */
+  overriddenFrom: Id,
+  /** Quién autorizó, cuando la entrada era de alguien sin rostro (D-06). */
+  authorizedByName: z.string().nullable(),
+});
+export type AccessGrantResult = z.infer<typeof AccessGrantResult>;
+
+/**
+ * `GET /access/decisions/:id/resolution`: ¿ya se resolvió ese rechazo? La
+ * pantalla de quien espera la autorización de la gerencia lo pregunta cada
+ * pocos segundos y sigue sola cuando llega.
+ */
+export const AccessResolution = z.object({
+  resolved: z.boolean(),
+  byName: z.string().nullable(),
+  at: Instante.nullable(),
+});
+export type AccessResolution = z.infer<typeof AccessResolution>;
+
+// ── Entrar solo con rostro (fase 3, bloque 3.3; D-06) ───────────────────────
+
+/**
+ * `GET /access/face-rule` y `PUT /access/face-rule`: la regla «nadie entra sin
+ * su rostro, salvo que la gerencia autorice esa visita», por gimnasio. Trae a
+ * cuántos socios con plan les falta el rostro: es lo que hay que saber antes
+ * de encenderla.
+ */
+export const FaceRule = z.object({
+  enabled: z.boolean(),
+  /** Sucursales que usan biometría: solo ahí pesa la regla. */
+  branches: z.array(z.object({
+    branchId: Id,
+    name: z.string(),
+    /** Socios que hoy pueden entrar con su plan o paquete (su sucursal de casa es esta). */
+    canEnter: z.number().int(),
+    /** De esos, los que no tienen rostro ni huella vigente en esta sucursal. */
+    withoutFace: z.number().int(),
+  })),
+  /** Último cambio de la regla, si lo hubo. */
+  changedAt: Instante.nullable(),
+  changedByName: z.string().nullable(),
+});
+export type FaceRule = z.infer<typeof FaceRule>;
+
+/** `GET /access/face-rule/pending`: a quién le falta el rostro en una sucursal (para llamarlos a registrarlo). */
+export const FaceRulePending = z.object({
+  total: z.number().int(),
+  members: z.array(z.object({ memberId: Id, memberCode: z.string(), fullName: z.string(), lastVisitOn: Fecha.nullable() })),
+});
+export type FaceRulePending = z.infer<typeof FaceRulePending>;
+
+// ── Pase de prueba (fase 3, bloque 3.3; D-08) ───────────────────────────────
+
+/**
+ * Un pase de prueba: gratis, UNO por persona, identificada por su celular.
+ * Vale el día de operación `validOn` en la sede `branchId`. No es un cargo ni
+ * una membresía: no mueve dinero.
+ */
+export const TrialPass = z.object({
+  id: Id,
+  memberId: Id,
+  branchId: Id,
+  branchName: z.string(),
+  validOn: Fecha,
+  /** Vale HOY (día de operación de su sede). */
+  validToday: z.boolean(),
+  /** Los últimos cuatro dígitos del celular con que se identificó. */
+  phoneLast4: z.string(),
+  grantedByName: z.string().nullable(),
+  grantedAt: Instante,
+});
+export type TrialPass = z.infer<typeof TrialPass>;
+
+/** Por qué no se le puede dar (los mismos códigos que `ERROR_REASONS`). */
+export const TRIAL_PASS_BLOCKS = ['TRIAL_PASS_ALREADY_USED', 'TRIAL_PASS_NEEDS_PHONE', 'TRIAL_PASS_NOT_FIRST_TIME', 'MEMBER_ARCHIVED'] as const;
+
+/**
+ * `GET /members/:id/trial-pass`: su pase de prueba (si ya lo usó) y, si no,
+ * si se le puede dar. `blockedBy` explica el no en palabras.
+ */
+export const MemberTrialPass = z.object({
+  pass: TrialPass.nullable(),
+  eligible: z.boolean(),
+  blockedBy: z.enum(TRIAL_PASS_BLOCKS).nullable(),
+  blockedText: z.string().nullable(),
+});
+export type MemberTrialPass = z.infer<typeof MemberTrialPass>;
+
+/** `POST /members/:id/trial-pass` (201; 200 si ya tenía el de hoy en esa sede): le dio su pase de prueba. */
+export const TrialPassGrantResult = z.object({
+  created: z.boolean(),
+  pass: TrialPass,
+});
+export type TrialPassGrantResult = z.infer<typeof TrialPassGrantResult>;
 
 // ── Pase del día (bloque 1.8; 4-01) ─────────────────────────────────────────
 
