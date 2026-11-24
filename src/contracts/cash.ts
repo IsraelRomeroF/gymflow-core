@@ -68,8 +68,11 @@ export const CashSession = z.object({
 });
 export type CashSession = z.infer<typeof CashSession>;
 
-/** `GET /cash-sessions?status=&businessDate=&branchId=`: hasta 100, el más reciente primero. */
-export const CashSessionList = z.object({ sessions: z.array(CashSession) });
+/**
+ * `GET /cash-sessions?status=&businessDate=&branchId=`: hasta 100 (o `limit`), el más reciente primero.
+ * `nextCursor` (bloque 4.11): hay más; se piden con `&cursor=` y los mismos filtros. `null` = es la última página.
+ */
+export const CashSessionList = z.object({ sessions: z.array(CashSession), nextCursor: z.string().nullable() });
 export type CashSessionList = z.infer<typeof CashSessionList>;
 
 /**

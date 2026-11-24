@@ -28,11 +28,14 @@ import { Centavos, Id, Instante } from './comun.js';
  *  - `contactChanges` socios que cambiaron su celular o su correo desde el portal y nadie del mostrador lo ha
  *                   confirmado con ellos (D-36; bloque 4.8): para quien da acceso al portal en esa sede;
  *                   `detail` trae hasta cuatro nombres, los más antiguos primero;
+ *  - `expenses`   gastos que se repiten y siguen «por confirmar» este mes (D-26; bloque 4.11): ya les tocó su
+ *                   día y nadie los confirmó ni los descartó; solo para quien anota gastos (`expenses:manage`),
+ *                   en sus sedes. Mientras no se confirman no cuentan en Movimientos ni en el Tablero;
  *  - `prospects`  interesados nuevos a los que nadie ha contactado;
  *  - `retention`   socios en riesgo (la cifra de Retención).
  */
 export const ASUNTOS_DEL_INICIO = [
-  'signatures', 'door', 'registers', 'variances', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'coachless', 'contactChanges', 'prospects', 'retention',
+  'signatures', 'door', 'registers', 'variances', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'coachless', 'contactChanges', 'expenses', 'prospects', 'retention',
 ] as const;
 export const AsuntoDelInicio = z.enum(ASUNTOS_DEL_INICIO);
 export type AsuntoDelInicio = z.infer<typeof AsuntoDelInicio>;

@@ -250,6 +250,9 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'settings.module.branch.disable': 'apagó un módulo en una sucursal',
   'settings.setup.update': 'cambió un ajuste del arranque',
   'settings.privacy.update': 'cambió el plazo de supresión de exsocios',
+  // D-05 (bloque 4.2): la dueña decide qué avisos suenan en su teléfono. El asiento dice cuál (`afterState.label`).
+  'settings.owner_alert.off': 'apagó uno de los avisos de su teléfono',
+  'settings.owner_alert.on': 'volvió a encender uno de los avisos de su teléfono',
   'approval.self': 'se autorizó a sí misma{m}',
   'approval.remote.request': 'pidió una autorización al teléfono{m}',
   'approval.remote.approve': 'autorizó desde su teléfono{m}',
@@ -298,6 +301,11 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'platform.catalog.change.schedule': 'anunció un cambio de precio de GymFlow',
   'platform.catalog.change.cancel': 'canceló un cambio de precio anunciado',
   'platform.catalog.change.apply': 'aplicó un cambio de precio anunciado',
+  // D-39 (bloque 4.9): descuentos por meses con motivo e IVA de la factura de GymFlow.
+  'platform.billing.adjustment.create': 'GymFlow dio un descuento o un precio especial en su factura',
+  'platform.billing.adjustment.cancel': 'GymFlow canceló un descuento o un precio especial de su factura',
+  'platform.tax.schedule': 'anunció desde cuándo llevan IVA las facturas de GymFlow',
+  'platform.tax.cancel': 'canceló un cambio de IVA anunciado',
   'platform.module.grant': 'GymFlow contrató un módulo',
   'platform.module.revoke': 'GymFlow retiró un módulo',
   'platform.plan.assign': 'GymFlow asignó el plan contratado',

@@ -253,6 +253,18 @@ export const PortalReceipt = z.object({
     fromPriceCents: Centavos,
     toPriceCents: Centavos,
   }).nullable(),
+  /**
+   * Lo que el recibo imprime del gimnasio, igual que el del mostrador (D-27; bloque 4.11 con los datos de
+   * 4.6): su logo (`data:` URL) arriba y, al pie, la leyenda, el teléfono, el WhatsApp y el RFC. Lo que no
+   * esté registrado viene en `null` y no sale.
+   */
+  gym: z.object({
+    logo: z.string().nullable(),
+    phone: z.string().nullable(),
+    whatsapp: z.string().nullable(),
+    rfc: z.string().nullable(),
+    receiptLegend: z.string().nullable(),
+  }),
 });
 export type PortalReceipt = z.infer<typeof PortalReceipt>;
 

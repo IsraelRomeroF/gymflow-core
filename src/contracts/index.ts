@@ -37,5 +37,6 @@ export * from './outbound.js';
 export * from './privacy.js';
 export * from './approvals.js';
 export * from './platform.js';
+export * from './owner-alerts.js';
 export * from './training.js';
 export * from './verificar.js';

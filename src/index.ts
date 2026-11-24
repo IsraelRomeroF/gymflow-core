@@ -35,5 +35,6 @@ export * from './privacidad.js';
 export * from './dinero-del-socio.js';
 export * from './plazos-del-socio.js';
 export * from './contacto-del-socio.js';
+export * from './owner-alerts.js';
 // Los contratos de la API NO salen de aquí: van por `@gymflow/core/contracts`,
 // para que el portal no cargue el núcleo entero ni Zod con cada pantalla.

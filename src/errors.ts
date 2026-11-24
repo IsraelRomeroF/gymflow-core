@@ -120,6 +120,8 @@ export const ERROR_REASONS = {
   MONTH_HAS_OPEN_CASH: 'Queda una caja abierta con fecha de ese mes: no se cierra hasta cortarla.',
   // D-26 (bloque 4.5): un gasto que se repite se propone; cada propuesta se confirma o se descarta una vez.
   EXPENSE_PROPOSAL_RESOLVED: 'Esa propuesta ya se confirmó o se descartó.',
+  // Bloque 4.11: un «Retiro del dueño» que salió del cajón no se anula en Movimientos (no devolvería el efectivo).
+  EXPENSE_FROM_CASH: 'Ese retiro salió de una caja: anularlo aquí no regresa el efectivo al cajón.',
   // D-25 (bloque 3.7): el aviso de privacidad lo firma la dueña.
   NOTICE_SIGNATURE_STALE: 'El borrador cambió después de pedir la firma, o ya no hay una firma pedida.',
   // ── Consola de plataforma: cobro de GymFlow a las marcas (bloque 1.13) ──
@@ -134,6 +136,11 @@ export const ERROR_REASONS = {
   PRICE_CHANGE_PENDING: 'Ese precio o ese plan ya tiene un cambio anunciado: se cancela antes de anunciar otro.',
   PRICE_CHANGE_TOO_SOON: 'Un cambio de precio o de plan se avisa con al menos un mes: la fecha pedida es anterior.',
   PRICE_CHANGE_CLOSED: 'Ese cambio anunciado ya aplicó o ya estaba cancelado.',
+  // ── Consola de plataforma: la factura de GymFlow (D-39, bloque 4.9) ──
+  BILLING_ADJUSTMENT_OVERLAP: 'La marca ya tiene un descuento o un precio especial en alguno de esos meses: se cancela antes de dar otro.',
+  BILLING_ADJUSTMENT_CLOSED: 'Ese descuento ya terminó o ya estaba cancelado.',
+  TAX_CHANGE_PENDING: 'Ya hay un cambio de IVA anunciado: se cancela antes de anunciar otro.',
+  TAX_CHANGE_CLOSED: 'Ese cambio de IVA ya empezó a aplicar o ya estaba cancelado.',
   // ── Datos y marca del gimnasio (D-27, bloque 4.6) ──
   MANAGED_BY_PLATFORM: 'Ese dato del gimnasio lo administra GymFlow: desde el panel no se cambia, se pide con una solicitud en «Mi gimnasio».',
   CHANGE_REQUEST_PENDING: 'Ya hay una solicitud pendiente para ese mismo dato: GymFlow la contesta antes de mandar otra.',

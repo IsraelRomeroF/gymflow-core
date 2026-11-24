@@ -261,6 +261,119 @@ export const PlatformPriceChangePreview = z.object({
 });
 export type PlatformPriceChangePreview = z.infer<typeof PlatformPriceChangePreview>;
 
+// ── La factura de GymFlow: descuentos, cobro por días, IVA y datos fiscales (auditoría 8, fase 4, bloque 4.9; D-39) ──
+
+/**
+ * Un renglón de una factura o de la mensualidad. `kind`: CHARGE (un mes
+ * completo), PRORATED (por días: primer mes o módulo contratado a medio mes),
+ * CATCH_UP (los días de un mes anterior de un módulo contratado después de
+ * emitirse la factura de ese mes) o DISCOUNT (el descuento, en negativo). Las
+ * facturas anteriores a D-39 no traen `kind`: todo es CHARGE.
+ */
+export const PlatformInvoiceLine = z.object({
+  key: z.string(),
+  name: z.string(),
+  monthlyCents: Centavos,
+  kind: z.enum(['CHARGE', 'PRORATED', 'CATCH_UP', 'DISCOUNT']).optional(),
+  /** El precio del mes completo, cuando el renglón se cobró por días. */
+  listCents: Centavos.optional(),
+  days: z.number().int().optional(),
+  ofDays: z.number().int().optional(),
+});
+export type PlatformInvoiceLine = z.infer<typeof PlatformInvoiceLine>;
+
+/** El desglose de un importe: `totalCents` es lo que se paga. Sin IVA, `taxRateBps` es 0 y subtotal = total. */
+export const PlatformTaxBreakdown = z.object({
+  subtotalCents: Centavos,
+  taxCents: Centavos,
+  /** Puntos base: 1600 = 16 %. */
+  taxRateBps: z.number().int(),
+  /** Los precios ya incluían el IVA: el total no subió, solo se desglosó. */
+  taxIncluded: z.boolean(),
+  totalCents: Centavos,
+});
+export type PlatformTaxBreakdown = z.infer<typeof PlatformTaxBreakdown>;
+
+/** Los datos fiscales que salen en la factura. No es un CFDI: es un estado de cuenta. */
+export const PlatformFiscalParty = z.object({ legalName: z.string(), rfc: z.string().nullable() });
+export const PlatformIssuer = PlatformFiscalParty.extend({
+  address: z.string().nullable(),
+  /** Cómo pagar: banco, CLABE, referencia. Texto libre de la configuración. */
+  payment: z.string().nullable(),
+  contact: z.string().nullable(),
+});
+export type PlatformIssuer = z.infer<typeof PlatformIssuer>;
+
+/** Un descuento o precio especial de una marca, por meses y con motivo. */
+export const PlatformBillingAdjustment = z.object({
+  id: Id,
+  organizationId: Id,
+  kind: z.enum(['PERCENT', 'AMOUNT', 'SPECIAL_PRICE']),
+  /** Puntos base: 2000 = 20 %. Solo en PERCENT. */
+  percentBps: z.number().int().nullable(),
+  /** El importe del descuento (AMOUNT) o la mensualidad especial sin IVA (SPECIAL_PRICE). */
+  amountCents: Centavos.nullable(),
+  /** Día 1 del mes de la primera factura que lo lleva, y del último. */
+  fromMonth: Fecha,
+  lastMonth: Fecha,
+  months: z.number().int(),
+  reason: z.string(),
+  /** Como sale escrito en el renglón de la factura. */
+  label: z.string(),
+  /** Programado (no empieza), vigente, terminado (caducó solo) o cancelado. */
+  status: z.enum(['SCHEDULED', 'ACTIVE', 'ENDED', 'CANCELED']),
+  createdAt: Instante,
+  cancelReason: z.string().nullable(),
+});
+export type PlatformBillingAdjustment = z.infer<typeof PlatformBillingAdjustment>;
+
+/** `GET /platform/organizations/:id/billing-adjustments`. */
+export const PlatformBillingAdjustmentList = z.object({
+  /** El mes en curso del cobro (`AAAA-MM`): el primero que se puede elegir. */
+  month: z.string(),
+  adjustments: z.array(PlatformBillingAdjustment),
+});
+export type PlatformBillingAdjustmentList = z.infer<typeof PlatformBillingAdjustmentList>;
+
+/** `POST /platform/organizations/:id/billing-adjustments`: el ajuste creado y, si el primer mes ya tenía factura, cuál (esa no cambia). */
+export const PlatformBillingAdjustmentCreated = z.object({
+  adjustment: PlatformBillingAdjustment,
+  alreadyInvoiced: z.array(z.string()),
+});
+export type PlatformBillingAdjustmentCreated = z.infer<typeof PlatformBillingAdjustmentCreated>;
+
+/** Un cambio del IVA de las facturas de GymFlow, con su fecha de inicio. */
+export const PlatformTaxChange = z.object({
+  id: Id,
+  rateBps: z.number().int(),
+  included: z.boolean(),
+  effectiveFrom: Fecha,
+  announcedOn: Fecha,
+  /** Anunciado (no empieza), vigente, sustituido por uno posterior o cancelado. */
+  status: z.enum(['PENDING', 'ACTIVE', 'REPLACED', 'CANCELED']),
+  cancelReason: z.string().nullable(),
+});
+export type PlatformTaxChange = z.infer<typeof PlatformTaxChange>;
+
+/** `GET /platform/tax`: el IVA de hoy, lo anunciado y si el emisor está configurado. */
+export const PlatformTax = z.object({
+  /** El IVA de la factura del mes en curso. `rateBps: 0` = apagado. */
+  current: z.object({ rateBps: z.number().int(), included: z.boolean() }),
+  pending: PlatformTaxChange.nullable(),
+  /** La primera factura que puede llevar un cambio que le mueva el total a alguna marca (un mes de aviso). */
+  minEffectiveFrom: Fecha,
+  /** El mes en curso (`AAAA-MM-01`): lo que no le mueve el total a nadie puede empezar aquí. */
+  currentMonth: Fecha,
+  changes: z.array(PlatformTaxChange),
+  /** Los datos de GymFlow como emisor, de la configuración del servidor (`GYMFLOW_ISSUER_*`); `null` si faltan. */
+  issuer: PlatformIssuer.nullable(),
+});
+export type PlatformTax = z.infer<typeof PlatformTax>;
+
+/** `PUT /platform/tax`. */
+export const PlatformTaxScheduled = z.object({ change: PlatformTaxChange, affected: z.number().int() });
+export type PlatformTaxScheduled = z.infer<typeof PlatformTaxScheduled>;
+
 /**
  * `GET /gymflow-account`: la cuenta del gimnasio con GymFlow, como la ve su
  * dueño en el panel (solo consulta). Para quien no es dueño, `visible` es
@@ -273,13 +386,23 @@ export const GymflowAccount = z.object({
   /** Cuándo se suspendería el servicio si no se registra el pago; `null` si no hay fecha. */
   suspendsOn: Fecha.nullable(),
   suspendsAfterDays: z.number().int(),
-  monthly: z.object({ lines: z.array(z.object({ key: z.string(), name: z.string(), monthlyCents: Centavos })), totalCents: Centavos }),
+  /** La mensualidad de un mes completo, hoy: sus renglones (con el del descuento, si tiene), subtotal, IVA y total (D-39). */
+  monthly: PlatformTaxBreakdown.extend({
+    lines: z.array(PlatformInvoiceLine),
+    /** El descuento o precio especial vigente y hasta la factura de qué mes dura. */
+    discount: z.object({ label: z.string(), lastMonth: Fecha }).nullable(),
+  }),
   /** La mensualidad ya anunciada para una fecha próxima, si cambia. */
   upcoming: z.object({ effectiveFrom: Fecha, totalCents: Centavos }).nullable(),
-  invoices: z.array(z.object({
-    id: Id, folio: z.string(), periodStart: Fecha, dueDate: Fecha, totalCents: Centavos, balanceCents: Centavos,
+  invoices: z.array(PlatformTaxBreakdown.extend({
+    id: Id, folio: z.string(), periodStart: Fecha, dueDate: Fecha, balanceCents: Centavos,
     state: z.enum(['PENDIENTE', 'PAGADA_EN_PARTE', 'VENCIDA', 'PAGADA', 'ANULADA']), overdueDays: z.number().int(),
+    lines: z.array(PlatformInvoiceLine),
+    /** Falso en las facturas anteriores a D-39: se emitieron por un total, sin desglose. */
+    itemized: z.boolean(),
   })),
+  /** A nombre de quién salen las facturas (de la ficha del gimnasio) y quién las emite y cómo se pagan. */
+  fiscal: z.object({ receiver: PlatformFiscalParty, issuer: PlatformIssuer.nullable() }),
   /** Los avisos abiertos de GymFlow. */
   notices: z.array(z.object({ id: Id, kind: PlatformNotice.shape.kind, title: z.string(), body: z.string(), noticeOn: Fecha, seen: z.boolean() })),
 });
