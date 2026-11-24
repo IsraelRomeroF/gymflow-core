@@ -184,7 +184,7 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
       pages: { charges: { total: 1, nextCursor: null, hasMore: false }, payments: { total: 1, nextCursor: null, hasMore: false } },
     }],
     // ── 1.6: listas por páginas ──
-    ['GET /members/:id/statement/charges', StatementChargesPage, { items: [{ ...cargo(), settledBy: 'PAYMENT', adjustments: [] }], total: 61, nextCursor: null, hasMore: false }],
+    ['GET /members/:id/statement/charges', StatementChargesPage, { items: [{ ...cargo(), settledBy: 'PAYMENT', lostOn: null, adjustments: [] }], total: 61, nextCursor: null, hasMore: false }],
     ['GET /members/:id/statement/payments', StatementPaymentsPage, { items: [{ ...pago(), collectedByUserId: null, collectedByName: null, covers: [] }], total: 1, nextCursor: null, hasMore: false }],
     ['GET /portal/me', PortalMe, {
       memberId: ID(3), memberCode: 'CEN-00042', fullName: 'Ana López', joinedAt: '2025-01-15', tenureDays: 673, membershipStatus: 'ACTIVE', planName: 'Mensual',
@@ -207,6 +207,8 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
         // 2.4: grupo de la bandeja, próximo paso, quién lo recomendó y por qué se cerró.
         nextStepOn: '2026-11-23', dueOn: '2026-11-23', queue: 'WAITING', referredByMemberId: null, referredByName: null,
         lostReasonCode: null, lostReason: null, closedAt: null,
+        // 4.7 (D-31): plan de interés y cuándo se cierra solo.
+        interestPlanId: null, interestPlanName: null, autoCloseOn: '2027-01-22', autoCloseSoon: false, autoClosed: false,
       }],
       total: 73, nextCursor: 'eyJ0IjoiMjAyNi0xMS0xOSJ9', hasMore: true, counts: { open: 73, closed: 12, today: 9, uncontacted: 20, waiting: 44 },
     }],
@@ -267,7 +269,7 @@ function sesion() {
       maxDiscountPercent: 30, maxWaiverAmountCents: '100000', maxManualBalanceAdjustCents: null, maxCashWithdrawalCents: '500000',
       maxRefundAmountCents: null, maxManualAccessGrantsPerShift: null, maxPosVoidsPerShift: 5,
     },
-    session: { startedAt: AHORA, endsAt: '2026-11-20T06:20:00.000Z', secondsLeft: 43200 },
+    session: { startedAt: AHORA, endsAt: '2026-11-20T06:20:00.000Z', secondsLeft: 43200, kind: 'COUNTER', renews: false, idleDays: null, maxEndsAt: '2026-11-20T06:20:00.000Z' },
   };
 }
 
@@ -319,7 +321,7 @@ function tablero() {
       cashExpensesCents: '-35000', cashOverageCents: '1000', fixedExpensesCents: '-400000', profitCents: '545000', ownerDrawsCents: '0', costOfGoodsCents: '-12000',
     },
     previous: { from: '2026-10-01', to: '2026-10-20', collectedCents: '1100000', accruedCents: '900000', profitCents: '500000' },
-    portfolio: { outstandingCents: '130000', overdueCents: '65000', delinquencyRate: 0.5, membersBehind: 2, membersBase: 248 },
+    portfolio: { outstandingCents: '130000', overdueCents: '65000', delinquencyRate: 0.5, membersBehind: 2, membersBase: 248, lostCents: '0', lostMembers: 0 },
     activeMembers: 246,
     openCashSessions: [{ id: ID(6), branchId: ID(2), registerCode: 'C1', openedAt: AHORA, openingFloatCents: '50000' }],
     branches: [{ branchId: ID(2), collectedCents: '1250000', accruedCents: '980000', activeMembers: 246, outstandingCents: '130000' }, { branchId: null, collectedCents: '0', accruedCents: '0', activeMembers: 0, outstandingCents: '0' }],
@@ -388,10 +390,10 @@ function estadoDeCuenta() {
   return {
     memberId: ID(3), outstandingCents: '0', creditCents: '0', netBalanceCents: '0', netBalanceLabel: '$0.00',
     charges: [
-      { ...cargo(), settledBy: 'PAYMENT', adjustments: [] },
-      { ...cargo(), id: ID(16), status: 'VOID', balanceCents: '65000', allocatedCents: '0', settledBy: null, adjustments: [] },
+      { ...cargo(), settledBy: 'PAYMENT', lostOn: null, adjustments: [] },
+      { ...cargo(), id: ID(16), status: 'VOID', balanceCents: '65000', allocatedCents: '0', settledBy: null, lostOn: null, adjustments: [] },
       {
-        ...cargo(), id: ID(19), allocatedCents: '0', adjustedCents: '65000', settledBy: 'WAIVER',
+        ...cargo(), id: ID(19), allocatedCents: '0', adjustedCents: '65000', settledBy: 'WAIVER', lostOn: null,
         adjustments: [{ id: ID(20), chargeId: ID(19), adjustmentType: 'WAIVER', amountCents: '65000', reasonCode: null, reason: 'Estuvo hospitalizado', approvedByUserId: ID(1), approvedByName: 'Gerencia Centro', createdAt: AHORA }],
       },
     ],
@@ -419,6 +421,8 @@ function turnoAbierto() {
     id: ID(6), branchId: ID(2), cashRegisterId: ID(5), status: 'OPEN', shiftLabel: 'MORNING', businessDate: '2026-11-19', openedByUserId: ID(1),
     openedByName: 'Recepción Centro', closedByUserId: null, closedByName: null, openingFloatCents: '50000', expectedCashCents: null,
     countedCashCents: null, varianceCents: null, varianceReason: null, firstCountedCashCents: null, countAttempts: 0, openedAt: AHORA, closedAt: null,
+    // D-17 (bloque 4.3): de quién es el turno y la revisión de su diferencia.
+    responsibleUserId: ID(1), responsibleName: 'Recepción Centro', varianceStatus: null, varianceReviewedByUserId: null, varianceReviewedByName: null, varianceReviewedAt: null, varianceReviewNote: null,
   };
 }
 
@@ -428,7 +432,7 @@ function corte() {
     byMethod: [{ method: 'CARD_TERMINAL', amountCents: '65000' }],
     contributions: [{ source: 'POS', byMethod: [{ method: 'CARD_TERMINAL', amountCents: '0' }] }],
     totalCollectedCents: null, cashCollectedCents: null, movementsCents: '-20000',
-    movements: [{ id: ID(19), movementType: 'WITHDRAWAL', amountCents: '-20000', amountLabel: '-$200.00', reason: 'Retiro a caja fuerte', createdByUserId: ID(1), approvedByUserId: null, at: AHORA }],
+    movements: [{ id: ID(19), movementType: 'WITHDRAWAL', amountCents: '-20000', amountLabel: '-$200.00', reason: 'Retiro a caja fuerte', createdByUserId: ID(1), approvedByUserId: null, at: AHORA, ownerDraw: false }],
     expectedCashCents: null, expectedCashLabel: null, blind: true, countedCashCents: null, varianceCents: null,
   };
 }
@@ -442,7 +446,7 @@ describe('retención y seguimiento (1.15)', () => {
   };
 
   it('la lista trae el día, los seis conteos, el total real y las alertas', () => {
-    expect(diferenciasConElContrato(RetentionAlerts, { asOf: '2026-11-19', counts, total: 11, outreach: [alerta] })).toEqual([]);
+    expect(diferenciasConElContrato(RetentionAlerts, { asOf: '2026-11-19', counts, total: 11, outreach: [alerta], terms: { dormantDays: 21, churnDays: 30, lostDays: 60, winbackMonths: 6, unpaidSaleDays: 7, lostDebtDays: 90 } })).toEqual([]);
     // Un conteo que falta o un estado inventado se notan.
     expect(diferenciasConElContrato(RetentionAlerts, { asOf: '2026-11-19', counts: { ...counts, LOST: undefined }, total: 11, outreach: [] })).not.toEqual([]);
     expect(diferenciasConElContrato(RetentionAlert, { ...alerta, state: 'GONE' })).not.toEqual([]);

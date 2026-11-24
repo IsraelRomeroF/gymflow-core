@@ -23,6 +23,10 @@ export const TopesDelPuesto = z.object({
 });
 export type TopesDelPuesto = z.infer<typeof TopesDelPuesto>;
 
+/** Los lugares de una sesión del personal (D-04): `sessions.kind`. */
+export const SESSION_KINDS = ['COUNTER', 'OWNER_PHONE'] as const;
+export type SessionKind = (typeof SESSION_KINDS)[number];
+
 export const SessionMe = z.object({
   /** `null` solo en una sesión sin persona (no la da el panel). */
   userId: Id.nullable(),
@@ -52,7 +56,17 @@ export const SessionMe = z.object({
    * Desde cuándo y hasta cuándo vale ESTA sesión (24-04, bloque 1.12): el
    * panel dice a qué hora se cierra. `null` si la sesión no se encontró.
    */
-  session: z.object({ startedAt: Instante, endsAt: Instante, secondsLeft: z.number().int() }).nullable(),
+  session: z.object({
+    startedAt: Instante, endsAt: Instante, secondsLeft: z.number().int(),
+    /**
+     * De qué LUGAR es (D-04, bloque 4.1): `COUNTER`, el mostrador y cualquier
+     * otro equipo (dura un tiempo fijo desde que se entra); `OWNER_PHONE`, el
+     * teléfono de la dueña (se renueva con el uso). Con `renews`, `endsAt` es
+     * cuándo se cerraría si no se volviera a usar, `idleDays` los días sin uso
+     * que aguanta y `maxEndsAt` el día en que se cierra aunque se use a diario.
+     */
+    kind: z.enum(SESSION_KINDS), renews: z.boolean(), idleDays: z.number().int().nullable(), maxEndsAt: Instante,
+  }).nullable(),
 });
 export type SessionMe = z.infer<typeof SessionMe>;
 

@@ -80,6 +80,13 @@ export const Dashboard = z.object({
     /** En socios: «24 de 248 atrasados» dice más que «vencido 100 %». */
     membersBehind: z.number().int(),
     membersBase: z.number().int(),
+    /**
+     * D-18 (bloque 4.4): la deuda que ya se dio por perdida (membresías que
+     * llevaron suspendidas el plazo del gimnasio). NO está en `outstandingCents`
+     * ni en `overdueCents`; sigue en el estado de cuenta de cada socio.
+     */
+    lostCents: Centavos,
+    lostMembers: z.number().int(),
   }),
   activeMembers: z.number().int(),
   openCashSessions: z.array(CajaAbiertaDelTablero),
@@ -400,12 +407,96 @@ export const Expense = z.object({
   adjustsExpenseId: Id.nullable(),
   /** Este gasto (de un mes cerrado) ya se corrigió con un ajuste anotado en ese mes. */
   correctedInMonth: Mes.nullable(),
+  /**
+   * D-26 (4.5): un PAGO de nómina lleva su fecha y a quién. `payeeUserId` es
+   * la persona del personal; `payeeName`, su nombre al anotarlo (o el nombre
+   * escrito a mano si no tiene cuenta en el gimnasio). La nómina anotada antes
+   * como un total del mes no trae ninguno de los tres.
+   */
+  paidOn: Fecha.nullable(),
+  payeeUserId: Id.nullable(),
+  payeeName: z.string().nullable(),
+  /** Salió de confirmar un gasto que se repite. */
+  recurringId: Id.nullable(),
 });
 export type Expense = z.infer<typeof Expense>;
 
-/** `GET /expenses?month=AAAA-MM`. `closed`: el mes está cerrado y lo nuevo va como ajuste al mes en curso (`currentMonth`). */
-export const ExpenseList = z.object({ month: Mes, closed: z.boolean(), currentMonth: Mes, expenses: z.array(Expense) });
+/**
+ * `GET /expenses?month=AAAA-MM`. `closed`: el mes está cerrado y lo nuevo va
+ * como ajuste al mes en curso (`currentMonth`). `today`: hoy en el gimnasio.
+ * `hiddenPayroll`: pagos de nómina por persona que cuentan en el mes pero que
+ * quien consulta no ve (no tiene Movimientos, `expenses:payroll:read`).
+ */
+export const ExpenseList = z.object({
+  month: Mes, closed: z.boolean(), currentMonth: Mes, today: Fecha, expenses: z.array(Expense),
+  hiddenPayroll: z.object({ count: z.number().int(), amountCents: Centavos }).nullable(),
+});
 export type ExpenseList = z.infer<typeof ExpenseList>;
+
+// ── Gastos que se repiten, «por confirmar» (4.5, D-26) ──────────────────────
+
+/** Cada cuánto se propone: cada mes, cada quincena (día 15 y último) o cada semana. */
+export const FRECUENCIAS_DE_GASTO = ['MONTHLY', 'BIWEEKLY', 'WEEKLY'] as const;
+export const FrecuenciaDeGasto = z.enum(FRECUENCIAS_DE_GASTO);
+export type FrecuenciaDeGasto = z.infer<typeof FrecuenciaDeGasto>;
+
+/** Un gasto que se repite: la plantilla de la que salen las propuestas. No cuenta en ninguna cifra. */
+export const RecurringExpense = z.object({
+  id: Id,
+  branchId: Id.nullable(),
+  category: z.string(),
+  description: z.string(),
+  amountCents: Centavos,
+  frequency: FrecuenciaDeGasto,
+  /** La primera fecha en que se propone. */
+  startsOn: Fecha,
+  payeeUserId: Id.nullable(),
+  payeeName: z.string().nullable(),
+  /** La persona ya no está activa en el gimnasio (se le sigue proponiendo hasta que alguien deje de repetirlo). */
+  payeeInactive: z.boolean(),
+  createdAt: Instante,
+  endedAt: Instante.nullable(),
+});
+export type RecurringExpense = z.infer<typeof RecurringExpense>;
+
+/**
+ * Una propuesta: el gasto `recurringId` toca el día `dueOn`. `PENDING` = por
+ * confirmar (no cuenta en ninguna cifra); `CONFIRMED` = alguien la confirmó y
+ * existe el gasto `expenseId`; `SKIPPED` = alguien la descartó.
+ */
+export const ExpenseProposal = z.object({
+  recurringId: Id,
+  dueOn: Fecha,
+  status: z.enum(['PENDING', 'CONFIRMED', 'SKIPPED']),
+  expenseId: Id.nullable(),
+  skippedAt: Instante.nullable(),
+  skippedByName: z.string().nullable(),
+  skipReason: z.string().nullable(),
+});
+export type ExpenseProposal = z.infer<typeof ExpenseProposal>;
+
+/** `GET /expenses/recurring?month=AAAA-MM`: lo que se repite y lo que propone para ese mes. */
+export const RecurringExpenseList = z.object({
+  month: Mes,
+  closed: z.boolean(),
+  currentMonth: Mes,
+  today: Fecha,
+  recurring: z.array(RecurringExpense),
+  proposals: z.array(ExpenseProposal),
+  /** Cuántas propuestas de ese mes siguen por confirmar (de lo que ve quien consulta). */
+  pending: z.number().int(),
+});
+export type RecurringExpenseList = z.infer<typeof RecurringExpenseList>;
+
+/** `GET /expenses/payees`: a quién se le puede anotar un pago de nómina (el personal del gimnasio, activo o no). */
+export const ExpensePayees = z.object({
+  payees: z.array(z.object({ id: Id, name: z.string(), role: z.string().nullable(), active: z.boolean() })),
+});
+export type ExpensePayees = z.infer<typeof ExpensePayees>;
+
+/** `POST /expenses/recurring/:id/skip` y `/end`. */
+export const RecurringExpenseResult = z.object({ ok: z.literal(true) });
+export type RecurringExpenseResult = z.infer<typeof RecurringExpenseResult>;
 
 // ── La tienda, para quien consulta: GET /reports/store (3.7, D-25) ──────────
 

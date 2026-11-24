@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Fecha, Id, Instante } from './comun.js';
 import { EngagementStateSchema, FollowUpChannelSchema, FollowUpOutcomeSchema } from './enums.js';
+import { MemberTermValues } from './plazos.js';
 
 /**
  * RETENCIÓN Y SEGUIMIENTO (`retention/retention.routes.ts`,
@@ -54,6 +55,8 @@ export const RetentionAlerts = z.object({
   counts: RetentionCounts,
   total: z.number().int(),
   outreach: z.array(RetentionAlert),
+  /** Los plazos del gimnasio con que se armó la lista (D-18, bloque 4.4): la pantalla dice estos, no los suyos. */
+  terms: MemberTermValues,
 });
 export type RetentionAlerts = z.infer<typeof RetentionAlerts>;
 

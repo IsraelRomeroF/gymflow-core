@@ -188,6 +188,33 @@ export function descuadreDeCortes(cortes: Iterable<bigint | null | undefined>): 
   return { faltanteCents, sobranteCents };
 }
 
+// ── D-17 · De quién es el descuadre y cuándo lo revisa la gerencia ─────────
+
+/**
+ * D-17 (b), fase 4, bloque 4.3. Hasta cuánto se deja pasar una diferencia sin
+ * que la gerencia tenga que revisarla: $20. Es de la diferencia en valor
+ * absoluto: un sobrante de $21 se revisa igual que un faltante de $21 (el
+ * sobrante sistemático es un cobro sin registrar).
+ */
+export const TOLERANCIA_DE_DESCUADRE_CENTS = 2_000n;
+
+/** «Por revisar» hasta que la gerencia lo cierra con su nota; después, «revisado». */
+export type VarianceReviewStatus = 'PENDING' | 'REVIEWED';
+
+/**
+ * ¿Ese corte nace «por revisar»? Solo si su diferencia es MAYOR a $20: justo
+ * $20 no; $20.01 sí. El motivo se sigue exigiendo con cualquier diferencia
+ * (`canClose`): la tolerancia quita la revisión, no la explicación.
+ *
+ * El descuadre es de quien ABRIÓ el turno, lo corte quien lo corte: el cajón
+ * estuvo a su nombre. Descontarlo del sueldo no lo hace el sistema (tiene
+ * límites laborales): aquí solo queda dicho de quién es y qué resolvió la gerencia.
+ */
+export function descuadrePorRevisar(varianceCents: bigint | null | undefined): boolean {
+  const v = varianceCents ?? 0n;
+  return (v < 0n ? -v : v) > TOLERANCIA_DE_DESCUADRE_CENTS;
+}
+
 // ── Folio ───────────────────────────────────────────────────────────────────
 
 /**

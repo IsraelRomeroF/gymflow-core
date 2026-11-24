@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   classifyEngagement, expectedGapDays, rankOutreach, outreachPriority,
-  exceptionOptions, RETENTION_THRESHOLDS, contactStatus,
+  exceptionOptions, RETENTION_THRESHOLDS, contactStatus, PLAZOS_DEL_SOCIO,
   type EngagementInput, type OutreachCandidate,
 } from '../src/index.js';
 
@@ -224,8 +224,11 @@ describe('pantalla de excepción: las tres acciones', () => {
 
 describe('los plazos son parámetros con los valores que decidió Israel (D-18, D15-03, D15-04, D15-07)', () => {
   it('21 días dejó de venir · 60 perdido · 6 días antes de cualquier alerta · una semana tras descongelar · 14 días de contacto', () => {
-    expect(RETENTION_THRESHOLDS.dormantMinDays).toBe(21);
-    expect(RETENTION_THRESHOLDS.lostDays).toBe(60);
+    // Desde el bloque 4.4 los dos plazos de D-18 tienen UNA definición, fuera de aquí.
+    expect(PLAZOS_DEL_SOCIO.dormantDays).toBe(21);
+    expect(PLAZOS_DEL_SOCIO.lostDays).toBe(60);
+    expect(RETENTION_THRESHOLDS).not.toHaveProperty('dormantMinDays');
+    expect(RETENTION_THRESHOLDS).not.toHaveProperty('lostDays');
     expect(RETENTION_THRESHOLDS.slippingMinDays).toBe(6);
     expect(RETENTION_THRESHOLDS.unfrozenGraceDays).toBe(7);
     expect(RETENTION_THRESHOLDS.contactValidDays).toBe(14);

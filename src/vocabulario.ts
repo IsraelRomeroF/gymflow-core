@@ -501,3 +501,26 @@ export const PASO_DEL_ALTA: Readonly<Record<string, { readonly porHacer: string;
   FACE: { porHacer: 'Registrar su rostro', hecho: 'Rostro registrado' },
   DATA: { porHacer: 'Completar sus datos', hecho: 'Datos completos' },
 };
+
+// ── Datos y marca del gimnasio (D-27, bloque 4.6) ──
+
+/** Cómo se llama cada dato que el gimnasio puede pedir que GymFlow cambie (`GYM_DATA_FIELDS`). */
+export const DATO_DEL_GIMNASIO: Readonly<Record<string, string>> = {
+  TRADE_NAME: 'Nombre comercial',
+  LEGAL_NAME: 'Razón social',
+  RFC: 'RFC',
+  LOGO: 'Logo',
+  PHONE: 'Teléfono del gimnasio',
+  WHATSAPP: 'WhatsApp del gimnasio',
+  RECEIPT_LEGEND: 'Leyenda del recibo',
+  BRANCH_PHONE: 'Teléfono de una sucursal',
+  BRANCH_HOURS: 'Horario de una sucursal',
+  OTHER: 'Otro dato',
+};
+
+/** En qué va una solicitud de cambio a GymFlow (`GYM_CHANGE_REQUEST_STATUSES`). */
+export const ESTADO_DE_SOLICITUD_DE_CAMBIO: Readonly<Record<string, EtiquetaConTono>> = {
+  PENDING: { label: 'Pendiente', tone: 'warn' },
+  APPLIED: { label: 'Aplicada', tone: 'ok' },
+  REJECTED: { label: 'Rechazada', tone: 'danger' },
+};

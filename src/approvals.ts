@@ -35,7 +35,7 @@ export const APPROVAL_DELIVERIES = ['ready', 'used', 'expired'] as const;
 export type ApprovalDelivery = (typeof APPROVAL_DELIVERIES)[number];
 
 /** De qué registro se trata lo que se firma: la bandeja lo lee de la base, no del texto de quien pide (29-01, UXG-05). */
-export const APPROVAL_RESOURCE_TYPES = ['CashSession', 'Payment', 'Charge', 'Membership', 'Member', 'VisitPack', 'MonthlyClose', 'PosSale', 'CashLimits'] as const;
+export const APPROVAL_RESOURCE_TYPES = ['CashSession', 'Payment', 'Charge', 'Membership', 'Member', 'VisitPack', 'MonthlyClose', 'PosSale', 'CashLimits', 'MemberTerms'] as const;
 export type ApprovalResourceType = (typeof APPROVAL_RESOURCE_TYPES)[number];
 
 export function isApprovalResourceType(v: string): v is ApprovalResourceType {
@@ -66,6 +66,8 @@ export const APPROVAL_RESOURCES_BY_PERMISSION: Readonly<Record<string, readonly 
   'pos:sale:return': ['PosSale'],
   // D-15: los topes del cajón de un gimnasio (el registro es el gimnasio mismo).
   'cash:limits:set': ['CashLimits'],
+  // D-18 (bloque 4.4): los plazos de la deuda de un gimnasio (el registro es el gimnasio mismo).
+  'billing:debt-terms:set': ['MemberTerms'],
   'reports:month:close': ['MonthlyClose'],
 };
 

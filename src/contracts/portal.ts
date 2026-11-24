@@ -212,7 +212,10 @@ export type PortalNotices = z.infer<typeof PortalNotices>;
 export const PortalSessions = z.object({
   active: z.number().int(),
   lastSeenAt: Instante.nullable(),
-  /** La sesión de este teléfono: su hora tope y a los cuántos días sin abrirlo se cierra antes. */
+  /**
+   * La sesión de este teléfono (D-04, bloque 4.1): queda abierta mientras se use. `idleDays` son los días
+   * sin abrirlo tras los que se cierra, y `expiresAt`, el día en que se cerraría si no se volviera a abrir.
+   */
   current: z.object({ expiresAt: Instante, idleDays: z.number().int() }),
 });
 export type PortalSessions = z.infer<typeof PortalSessions>;

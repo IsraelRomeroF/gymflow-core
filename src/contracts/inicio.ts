@@ -15,6 +15,8 @@ import { Centavos, Id, Instante } from './comun.js';
  *  - `signatures`  firmas que YO pedí y siguen esperando al dueño (`until`: cuándo vence la primera);
  *  - `door`        rechazos de hoy en la puerta que nadie ha resuelto;
  *  - `registers`   cajas que siguen abiertas desde un día anterior (`detail`: cuáles);
+ *  - `variances`   cortes con más de $20 de diferencia que la gerencia no ha revisado (D-17; bloque 4.3):
+ *                   solo para quien los revisa (`cash:variance:approve`); `amountCents` es lo que falta;
  *  - `biometrics`  plantillas de un lector revocadas hace más de 30 días sin confirmar su borrado;
  *  - `debts`       membresías suspendidas con periodos atrasados: adeudo por decidir (`amountCents`);
  *  - `texts`       textos obligatorios sin publicar (`detail`: cuáles);
@@ -23,11 +25,14 @@ import { Centavos, Id, Instante } from './comun.js';
  *  - `coachless`   socios dados de alta en los últimos 7 días que siguen sin coach (D-29; bloque 3.16): solo
  *                   para quien puede ponérselo y si el gimnasio tiene algún coach activo; `detail` trae hasta
  *                   cuatro nombres;
- *  - `prospects`   interesados nuevos a los que nadie ha contactado;
+ *  - `contactChanges` socios que cambiaron su celular o su correo desde el portal y nadie del mostrador lo ha
+ *                   confirmado con ellos (D-36; bloque 4.8): para quien da acceso al portal en esa sede;
+ *                   `detail` trae hasta cuatro nombres, los más antiguos primero;
+ *  - `prospects`  interesados nuevos a los que nadie ha contactado;
  *  - `retention`   socios en riesgo (la cifra de Retención).
  */
 export const ASUNTOS_DEL_INICIO = [
-  'signatures', 'door', 'registers', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'coachless', 'prospects', 'retention',
+  'signatures', 'door', 'registers', 'variances', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'coachless', 'contactChanges', 'prospects', 'retention',
 ] as const;
 export const AsuntoDelInicio = z.enum(ASUNTOS_DEL_INICIO);
 export type AsuntoDelInicio = z.infer<typeof AsuntoDelInicio>;

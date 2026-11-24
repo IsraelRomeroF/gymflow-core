@@ -119,6 +119,8 @@ export const ROLES: readonly RoleDef[] = [
       'staff:rescue',
       // Lee los textos legales completos y firma el aviso de privacidad (D-25).
       'settings:consent:read',
+      // Ve cuánto se le paga a cada persona: ella paga la nómina (D-26, bloque 4.5).
+      'expenses:payroll:read',
     ),
     limits: SIN_TOPE,
   },

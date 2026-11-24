@@ -55,6 +55,8 @@ export const ERROR_REASONS = {
   SALE_ALREADY_RETURNED: 'Esa venta de la tienda ya se devolvió.',
   SALE_SAME_DAY: 'Esa venta es de hoy y su turno sigue abierto: se anula, no se devuelve.',
   CASH_LIMIT_FORBIDDEN: 'Ese movimiento de caja pasa del tope del turno para tu puesto: lo hace la gerencia.',
+  // ── Caja, fase 4 (bloque 4.3 · D-17) ──
+  VARIANCE_NOT_PENDING: 'Ese corte no tiene una diferencia por revisar: cuadró, quedó dentro de la tolerancia o ya se revisó.',
   CLASS_PAY_NOW: 'Debe su mensualidad: una clase suelta solo se aparta pagándola en el momento.',
   CLASS_HOLD_CLOSED: 'Falta menos de una hora para la clase: ya no se aparta sin pagar.',
   ALREADY_REVERSED: 'El pago ya se revirtió o no se completó: no admite otra reversa ni reembolsos.',
@@ -84,6 +86,10 @@ export const ERROR_REASONS = {
   // ── Captación (bloque 2.4) ──
   PHONE_IN_USE: 'Ese celular ya es el de otro socio: se puede compartir (D-09), pero hay que anotar quién es el responsable del número.',
   GUARDIAN_REQUIRED: 'El alta es de un menor de 15 a 17 años: se aprueba cuando su tutor firma en el mostrador (D-10).',
+  // ── El socio cambia su contacto desde el portal (bloque 4.8 · D-36) ──
+  CONTACT_CONFIRMATION_FAILED: 'Para cambiar su celular o su correo el socio escribe completo el que tiene registrado, y no coincidió.',
+  CONTACT_CHANGE_LIMIT: 'El socio ya cambió ese dato las veces que caben en el periodo: el siguiente cambio es en recepción.',
+  CONTACT_CHANGE_NOT_ALLOWED: 'Ese cambio no se hace desde el portal (dejar la ficha sin celular ni correo, o un celular que ya está en otra ficha suya): se hace en recepción.',
   PROSPECT_ALREADY_OPEN: 'Ya hay un interesado abierto con ese celular y ese nombre: la respuesta trae `existing`.',
   ALREADY_MEMBER: 'Esa persona ya es socio (mismo celular o correo, y nombre): la respuesta trae `existing`.',
   INTAKE_ALREADY_REVIEWED: 'Esa alta digital ya la revisó otra persona: la respuesta dice quién.',
@@ -112,6 +118,8 @@ export const ERROR_REASONS = {
   // D-22 (bloque 3.7): las cifras de un mes cerrado quedan fijas.
   MONTH_CLOSED: 'El mes al que corresponde ya está cerrado: se anota en el mes en curso como ajuste de ese mes.',
   MONTH_HAS_OPEN_CASH: 'Queda una caja abierta con fecha de ese mes: no se cierra hasta cortarla.',
+  // D-26 (bloque 4.5): un gasto que se repite se propone; cada propuesta se confirma o se descarta una vez.
+  EXPENSE_PROPOSAL_RESOLVED: 'Esa propuesta ya se confirmó o se descartó.',
   // D-25 (bloque 3.7): el aviso de privacidad lo firma la dueña.
   NOTICE_SIGNATURE_STALE: 'El borrador cambió después de pedir la firma, o ya no hay una firma pedida.',
   // ── Consola de plataforma: cobro de GymFlow a las marcas (bloque 1.13) ──
@@ -126,6 +134,10 @@ export const ERROR_REASONS = {
   PRICE_CHANGE_PENDING: 'Ese precio o ese plan ya tiene un cambio anunciado: se cancela antes de anunciar otro.',
   PRICE_CHANGE_TOO_SOON: 'Un cambio de precio o de plan se avisa con al menos un mes: la fecha pedida es anterior.',
   PRICE_CHANGE_CLOSED: 'Ese cambio anunciado ya aplicó o ya estaba cancelado.',
+  // ── Datos y marca del gimnasio (D-27, bloque 4.6) ──
+  MANAGED_BY_PLATFORM: 'Ese dato del gimnasio lo administra GymFlow: desde el panel no se cambia, se pide con una solicitud en «Mi gimnasio».',
+  CHANGE_REQUEST_PENDING: 'Ya hay una solicitud pendiente para ese mismo dato: GymFlow la contesta antes de mandar otra.',
+  CHANGE_REQUEST_CLOSED: 'Esa solicitud de cambio ya se aplicó o ya se rechazó.',
   // ── Firmas: el «no» pegado a la operación (D-03, bloque 3.2) ──
   APPROVAL_REPLY_REQUIRED: 'Esa operación ya se rechazó: para volver a pedirla hay que contestar ese «no» (`reply`).',
   APPROVAL_REJECTED_RECENTLY: 'Esa operación se rechazó hace menos de 30 minutos: no se firma en el mostrador, solo desde la sesión de quien firma.',

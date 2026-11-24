@@ -131,6 +131,12 @@ export const StatementCharge = Charge.extend({
    * `CORRECTION`. Un castigado aquí dice `WAIVER` y allá no cuenta.
    */
   settledBy: SettledBySchema.nullable(),
+  /**
+   * D-18 (bloque 4.4): el día en que esta deuda se dio por PERDIDA. No está
+   * condonada ni anulada: se sigue debiendo y se puede cobrar, pero ya no
+   * cuenta en «Por cobrar». `null` = deuda normal (o ya saldada).
+   */
+  lostOn: Fecha.nullable(),
   adjustments: z.array(ChargeAdjustment),
 });
 export type StatementCharge = z.infer<typeof StatementCharge>;

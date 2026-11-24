@@ -47,6 +47,24 @@ export const CashSession = z.object({
   countAttempts: z.number().int(),
   openedAt: Instante,
   closedAt: Instante.nullable(),
+  /**
+   * D-17 (bloque 4.3). El descuadre es de quien ABRIÓ el turno, lo corte quien
+   * lo corte: `responsibleUserId` es siempre `openedByUserId`, dicho con su
+   * nombre para que la hoja no obligue a deducirlo.
+   */
+  responsibleUserId: Id,
+  responsibleName: z.string().nullable(),
+  /**
+   * La revisión de la diferencia: `PENDING` si el corte cerró con más de $20
+   * de diferencia (falte o sobre) y la gerencia no lo ha revisado; `REVIEWED`
+   * cuando lo cerró con su nota; `null` si no la necesita (cuadró, quedó
+   * dentro de la tolerancia, el turno sigue abierto o el corte es anterior a la regla).
+   */
+  varianceStatus: z.enum(['PENDING', 'REVIEWED']).nullable(),
+  varianceReviewedByUserId: Id.nullable(),
+  varianceReviewedByName: z.string().nullable(),
+  varianceReviewedAt: Instante.nullable(),
+  varianceReviewNote: z.string().nullable(),
 });
 export type CashSession = z.infer<typeof CashSession>;
 
@@ -83,6 +101,11 @@ export const CashMovement = z.object({
   createdByUserId: Id,
   approvedByUserId: Id.nullable(),
   at: Instante,
+  /**
+   * El retiro es un «Retiro del dueño» (bloque 4.3): salió del cajón y en el
+   * mismo acto quedó anotado en Movimientos (`operating_expenses`, `OWNER_DRAW`).
+   */
+  ownerDraw: z.boolean(),
 });
 export type CashMovement = z.infer<typeof CashMovement>;
 
@@ -124,3 +147,81 @@ export const CloseCashSessionResult = CashSession.extend({
   varianceKind: z.enum(['EXACT', 'SHORT', 'OVER']),
 });
 export type CloseCashSessionResult = z.infer<typeof CloseCashSessionResult>;
+
+// ── D-17 · Caja, fase 4 (bloque 4.3) ────────────────────────────────────────
+
+/**
+ * `GET /cash-sessions/:id/allowance`: lo que a ESTA persona le queda por mover
+ * en ESTE turno, para decirlo ANTES de pedir la firma (defecto D1 de 3.13: el
+ * 403 llegaba después de que la dueña tecleaba su contraseña).
+ *
+ * No revela nada del corte ciego: son topes y lo ya anotado, no el efectivo.
+ */
+export const CashShiftAllowance = z.object({
+  sessionId: Id,
+  withdrawal: z.object({
+    /** `SIN_TOPE` la gerencia; `CON_TOPE` recepción; `NO_PUEDE` un puesto con el retiro en cero. */
+    role: z.enum(['SIN_TOPE', 'CON_TOPE', 'NO_PUEDE']),
+    /** El tope del gimnasio por turno para un puesto con tope; `null` sin tope. */
+    limitCents: Centavos.nullable(),
+    /** Lo que esta persona ya retiró o depositó en este turno. */
+    usedCents: Centavos,
+    /** Lo que le queda: un importe mayor NO pasa ni con firma. `null` = sin tope. */
+    remainingCents: Centavos.nullable(),
+  }),
+  /** Fondo y gasto chico sin firma: lo que queda del tope del turno, por tipo. */
+  petty: z.object({
+    limitCents: Centavos,
+    floatInRemainingCents: Centavos,
+    expenseRemainingCents: Centavos,
+  }),
+});
+export type CashShiftAllowance = z.infer<typeof CashShiftAllowance>;
+
+/** Una caja que sigue abierta. `stale`: se abrió en un día de negocio anterior al de hoy de su sede (amaneció sin cortar). */
+export const UnclosedCashSession = z.object({
+  id: Id,
+  branchId: Id,
+  branchName: z.string(),
+  registerName: z.string(),
+  openedByUserId: Id,
+  openedByName: z.string().nullable(),
+  openedAt: Instante,
+  businessDate: Fecha,
+  stale: z.boolean(),
+});
+export type UnclosedCashSession = z.infer<typeof UnclosedCashSession>;
+
+/**
+ * `GET /cash/alerts[?branchId=]`: lo que la caja tiene sin resolver, en las
+ * sedes de quien pregunta. Lo leen la vista «Cortes» de la dueña y el Inicio
+ * de la gerencia; el aviso al teléfono de la dueña (bloque 4.2) sale del mismo
+ * servicio (`CashAlertsService`).
+ */
+export const CashAlerts = z.object({
+  asOf: Instante,
+  /** Todas las abiertas, la más vieja primero. Las que amanecieron sin cortar traen `stale`. */
+  open: z.array(UnclosedCashSession),
+  /** Cuántas de `open` son de un día anterior. */
+  staleCount: z.number().int(),
+  pendingVariances: z.object({
+    count: z.number().int(),
+    /** Suma de los faltantes por revisar, en positivo. */
+    shortageCents: Centavos,
+    /** Suma de los sobrantes por revisar. */
+    overageCents: Centavos,
+    /** El día de negocio del más antiguo. */
+    oldestBusinessDate: Fecha.nullable(),
+  }),
+});
+export type CashAlerts = z.infer<typeof CashAlerts>;
+
+/** `POST /cash-sessions/:id/owner-draw` (201): el retiro del cajón y su anotación en Movimientos, hechos juntos. */
+export const OwnerDrawFromDrawer = z.object({
+  movement: CashMovement,
+  /** El «Retiro del dueño» que quedó en Movimientos. */
+  expenseId: Id,
+  /** El mes en que quedó anotado (AAAA-MM). */
+  month: z.string(),
+});
+export type OwnerDrawFromDrawer = z.infer<typeof OwnerDrawFromDrawer>;

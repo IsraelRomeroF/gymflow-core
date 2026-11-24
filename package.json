@@ -31,6 +31,10 @@
       "types": "./dist/retention.d.ts",
       "default": "./dist/retention.js"
     },
+    "./plazos": {
+      "types": "./dist/plazos-del-socio.d.ts",
+      "default": "./dist/plazos-del-socio.js"
+    },
     "./captacion": {
       "types": "./dist/captacion.d.ts",
       "default": "./dist/captacion.js"

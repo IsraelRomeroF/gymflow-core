@@ -1,4 +1,5 @@
 import type { FollowUpChannel, FollowUpOutcome } from './retention.js';
+import { PLAZOS_DEL_INTERESADO, sumarDias } from './plazos-del-socio.js';
 
 /**
  * CAPTACIÓN (auditoría 8, fase 2, bloque 2.4): las reglas de un interesado y
@@ -74,6 +75,66 @@ export function dueOn(p: { readonly nextStepOn: string | null; readonly lastCont
 export function prospectQueue(due: string | null, today: string): ProspectQueue {
   if (due === null) return 'UNCONTACTED';
   return due <= today ? 'TODAY' : 'WAITING';
+}
+
+// ── Cierre solo (D-31, bloque 4.7) ──────────────────────────────────────────
+
+/**
+ * A los cuántos días sin contacto ni fecha pendiente un interesado abierto se
+ * cierra solo. El número vive en la definición única de plazos
+ * (`PLAZOS_DEL_INTERESADO`, `plazos-del-socio.ts`): aquí solo se le da nombre.
+ */
+export const PROSPECT_AUTO_CLOSE_DAYS: number = PLAZOS_DEL_INTERESADO.autoCloseDays;
+/** Días de aviso antes de que el cierre solo empiece en un gimnasio, y con cuánta anticipación la fila lo dice. */
+export const PROSPECT_AUTO_CLOSE_NOTICE_DAYS: number = PLAZOS_DEL_INTERESADO.autoCloseNoticeDays;
+
+/**
+ * El código con que queda cerrado quien se cerró solo. NO está en la lista
+ * corta `interesadoPerdido` (`motivos.ts`): nadie lo elige a mano, y así se
+ * cuenta aparte de los que recepción cerró por precio u horario.
+ */
+export const PROSPECT_AUTO_CLOSE_CODE = 'SIN_CONTACTO';
+/** El texto que queda como motivo de quien se cerró solo. */
+export const prospectAutoCloseReason = (dias: number = PROSPECT_AUTO_CLOSE_DAYS): string => `${dias} días sin contacto`;
+
+/** Lo que cuenta para el cierre solo, en días de la sede (`AAAA-MM-DD`). */
+export type ProspectActivity = {
+  /** El día en que se registró. */
+  readonly createdOn: string;
+  /** El día de su último contacto (cualquier resultado, también «No contestó»). */
+  readonly lastContactOn: string | null;
+  /** Su próximo paso con fecha, pasado o futuro. */
+  readonly nextStepOn: string | null;
+  /** El día en que lo reabrieron por última vez. */
+  readonly reopenedOn: string | null;
+};
+
+/**
+ * El día en que un interesado abierto se cierra solo: `PROSPECT_AUTO_CLOSE_DAYS`
+ * después de LO ÚLTIMO que pasó con él o que quedó agendado: su último
+ * contacto (o su registro, si nadie lo ha contactado), su próximo paso con
+ * fecha, o su reapertura. Una fecha pendiente lo protege: quien dijo
+ * «llámame en enero» no se cierra antes de enero más el plazo. Reabrir
+ * también cuenta: si no, el que se cerró solo volvería a cerrarse esa noche.
+ */
+export function prospectAutoCloseOn(p: ProspectActivity, dias: number = PROSPECT_AUTO_CLOSE_DAYS): string {
+  let ultimo = p.lastContactOn ?? p.createdOn;
+  for (const d of [p.nextStepOn, p.reopenedOn]) if (d && d > ultimo) ultimo = d;
+  return sumarDias(ultimo, dias);
+}
+
+/**
+ * ¿Se cierra solo hoy? `today`: el día de SU sede. `startsOn`: desde qué día
+ * cierra solo este gimnasio (la primera corrida solo lo fija; `null` = aún no).
+ */
+export function prospectClosesItself(p: ProspectActivity, today: string, startsOn: string | null, dias: number = PROSPECT_AUTO_CLOSE_DAYS): boolean {
+  if (startsOn === null || today < startsOn) return false;
+  return prospectAutoCloseOn(p, dias) <= today;
+}
+
+/** ¿Le quedan `aviso` días o menos para cerrarse solo? Es lo que la fila avisa. */
+export function prospectClosesSoon(autoCloseOn: string, today: string, aviso: number = PROSPECT_AUTO_CLOSE_NOTICE_DAYS): boolean {
+  return autoCloseOn <= sumarDias(today, aviso);
 }
 
 /** A partir de cuántos días sin contactar a un interesado nuevo la fila lo marca (10-16). */

@@ -14,6 +14,8 @@
  * que es peor que no tenerla.
  */
 
+import { PLAZOS_DEL_SOCIO, type PlazosDelSocio } from './plazos-del-socio.js';
+
 const MS_DIA = 86_400_000;
 
 export type EngagementState =
@@ -31,12 +33,16 @@ export type EngagementState =
   | 'LOST';
 
 /**
- * LOS PLAZOS DE RETENCIÓN, como parámetros con los valores que Israel decidió
- * (D-18, D15-03, D15-04, D15-07; auditoría 8, informe 15). Están juntos y con
- * nombre para que la gerencia pueda ajustarlos desde el panel en la fase 4
- * (D-18: «Gerencia ajusta los de retención»); mientras, son estos. Todo lo
- * que aquí se declara se USA en `classifyEngagement` o `expectedGapDays`:
- * un umbral declarado y no aplicado (15-17) es una promesa falsa.
+ * LOS UMBRALES INTERNOS DE LA REGLA DE HÁBITO (D15-03, D15-04, D15-07;
+ * auditoría 8, informe 15). No son plazos que el gimnasio ajuste: afinan
+ * cuándo hay un hábito que medir. Todo lo que aquí se declara se USA en
+ * `classifyEngagement` o `expectedGapDays`: un umbral declarado y no aplicado
+ * (15-17) es una promesa falsa.
+ *
+ * Los dos plazos de D-18 que usa esta regla («dejó de venir» a los 21 días y
+ * «perdido» a los 60) NO están aquí: viven en `plazos-del-socio.ts`, que es
+ * su única definición, y llegan por `EngagementInput.plazos` con lo que el
+ * gimnasio tenga ajustado (bloque 4.4).
  */
 export const RETENTION_THRESHOLDS = {
   /** Margen inicial antes de medir a un socio nuevo. */
@@ -53,14 +59,6 @@ export const RETENTION_THRESHOLDS = {
    * «afloja», descansó. Seis días cubren el puente más largo del calendario.
    */
   slippingMinDays: 6,
-  /**
-   * A estos días sin venir ya «dejó de venir», venga como viniera (15-03,
-   * D15-03 / D-18: 21 días). Tres semanas: coincide con el ciclo mensual de
-   * cobro y deja una semana para hablarle antes del corte.
-   */
-  dormantMinDays: 21,
-  /** Sin venir tantos días, se da por perdido pase lo que pase (D-18: 60). */
-  lostDays: 60,
   /**
    * Tras descongelar la membresía, una semana antes de medirlo (D15-07):
    * quien pidió pausa no «dejó de venir», y al volver necesita retomar.
@@ -108,6 +106,11 @@ export type EngagementInput = {
    * `null` o ausente = sin pausa que considerar.
    */
   readonly resumedAt?: Date | null;
+  /**
+   * Los plazos del gimnasio (D-18): a cuántos días sin venir «dejó de venir»
+   * y a cuántos se da por «perdido». Sin ellos valen los de fábrica.
+   */
+  readonly plazos?: Pick<PlazosDelSocio, 'dormantDays' | 'lostDays'>;
   readonly now: Date;
 };
 
@@ -149,6 +152,7 @@ export function expectedGapDays(baselineVisitsPerWeek: number | null): number {
 
 export function classifyEngagement(input: EngagementInput): EngagementVerdict {
   const T = RETENTION_THRESHOLDS;
+  const P = input.plazos ?? PLAZOS_DEL_SOCIO;
   const desdeAlta = dias(input.joinedAt, input.now);
   const desdeUltimaVisita = input.lastVisitAt === null ? null : dias(input.lastVisitAt, input.now);
 
@@ -173,12 +177,12 @@ export function classifyEngagement(input: EngagementInput): EngagementVerdict {
     ? `Descongeló hace ${desdeReanudo} días y no ha vuelto`
     : `Lleva ${desdeVisita} días sin venir`;
 
-  // Perdido gana sobre todo lo demás: da igual su hábito si lleva dos meses sin venir.
-  if (desdeVisita !== null && desdeVisita >= T.lostDays) {
+  // Perdido gana sobre todo lo demás: da igual su hábito si lleva tanto sin venir (D-18: 60 días).
+  if (desdeVisita !== null && desdeVisita >= P.lostDays) {
     return { ...base, state: 'LOST', needsOutreach: false,
       detail: desdeUltimaVisita === null ? `Se inscribió hace ${desdeAlta} días y NUNCA vino` : `Sin venir ${desdeUltimaVisita} días. Se da por perdido` };
   }
-  if (desdeVisita === null && desdeAlta >= T.lostDays) {
+  if (desdeVisita === null && desdeAlta >= P.lostDays) {
     return { ...base, state: 'LOST', needsOutreach: false,
       detail: `Se inscribió hace ${desdeAlta} días y NUNCA vino` };
   }
@@ -214,9 +218,9 @@ export function classifyEngagement(input: EngagementInput): EngagementVerdict {
   if (desdeVisita < T.slippingMinDays) {
     return { ...base, state: 'REGULAR', needsOutreach: false, detail: 'Dentro de su rutina' };
   }
-  // A `dormantMinDays` ya dejó de venir aunque su hábito fuera flojo (15-03):
-  // quien venía cada 11 días no «afloja» a los 45, se fue.
-  if (desdeVisita >= T.dormantMinDays || falladas >= T.dormantMissedVisits) {
+  // A los días de «dejó de venir» (D-18: 21) ya dejó de venir aunque su hábito
+  // fuera flojo (15-03): quien venía cada 11 días no «afloja» a los 45, se fue.
+  if (desdeVisita >= P.dormantDays || falladas >= T.dormantMissedVisits) {
     return { ...base, state: 'DORMANT', needsOutreach: true,
       detail: `${sinVenir}; suele venir cada ${cadaCuanto(brecha)}` };
   }

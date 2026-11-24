@@ -46,8 +46,53 @@ export const Prospect = z.object({
   lostReasonCode: z.string().nullable(),
   lostReason: z.string().nullable(),
   closedAt: Instante.nullable(),
+  /** El plan que preguntó (D-31): la venta abre con él. `null` = no se anotó, o el plan ya no existe. */
+  interestPlanId: Id.nullable(),
+  interestPlanName: z.string().nullable(),
+  /** El día en que se cierra solo si nadie lo contacta ni le pone fecha (D-31); `null` si ya está cerrado. */
+  autoCloseOn: Fecha.nullable(),
+  /** Faltan pocos días para `autoCloseOn` (o ya pasó): la fila lo avisa. */
+  autoCloseSoon: z.boolean(),
+  /** Se cerró solo por falta de contacto (no lo cerró una persona). Se puede reabrir. */
+  autoClosed: z.boolean(),
 });
 export type Prospect = z.infer<typeof Prospect>;
+
+/**
+ * `GET /prospects/auto-close` (D-31, bloque 4.7): el cierre solo, visto ANTES
+ * de que pase. `startsOn` es el día desde el que cierra en este gimnasio:
+ * `null` mientras el cierre de la noche no ha corrido con esta regla (su
+ * primera corrida no cierra a nadie, solo fija esa fecha). `due` son los
+ * que ya cumplieron el plazo (se cierran en la siguiente corrida, o el día
+ * `startsOn` si aún no llega) y `soon`, los que lo cumplen en los próximos
+ * `noticeDays` días. De las sedes de quien pregunta.
+ */
+export const ProspectAutoClose = z.object({
+  days: z.number().int(),
+  noticeDays: z.number().int(),
+  startsOn: Fecha.nullable(),
+  /** Ya cierra de verdad: `startsOn` llegó. */
+  active: z.boolean(),
+  due: z.number().int(),
+  soon: z.number().int(),
+});
+export type ProspectAutoClose = z.infer<typeof ProspectAutoClose>;
+
+/** Un plan en la página pública de la sucursal (D-31): nombre y precio de LISTA de esa sede, sin promociones. */
+export const PublicPlan = z.object({
+  id: Id,
+  name: z.string(),
+  description: z.string().nullable(),
+  billingModel: z.string(),
+  durationUnit: z.string(),
+  durationValue: z.number().int(),
+  /** Precio de lista en esa sucursal (el propio de la sede si lo tiene). */
+  priceCents: Centavos,
+  /** Inscripción, si el plan la cobra; `'0'` = no cobra. */
+  signupFeeCents: Centavos,
+  visitsIncluded: z.number().int().nullable(),
+});
+export type PublicPlan = z.infer<typeof PublicPlan>;
 
 /** Los grupos de la bandeja y las dos pestañas, con el mismo buscador y sede. */
 export const ProspectCounts = z.object({

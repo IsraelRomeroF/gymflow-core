@@ -141,6 +141,8 @@ describe('contratos de captación (2.4)', () => {
       createdAt: contacto.createdAt, updatedAt: contacto.createdAt, lastFollowUp: contacto, followUps: 1,
       nextStepOn: '2026-11-25', dueOn: '2026-11-25', queue: 'WAITING', referredByMemberId: null, referredByName: 'Juan Pérez',
       lostReasonCode: null, lostReason: null, closedAt: null,
+      // 4.7 (D-31): el plan que preguntó y cuándo se cierra solo.
+      interestPlanId: contacto.id, interestPlanName: 'Mensual', autoCloseOn: '2027-01-24', autoCloseSoon: false, autoClosed: false,
     });
     expect(r.success, JSON.stringify(r.error?.issues)).toBe(true);
   });

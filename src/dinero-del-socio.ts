@@ -155,6 +155,23 @@ export function reglaDelCajon(input: {
   }
 }
 
+/**
+ * Lo que al puesto le QUEDA por retirar o depositar en este turno (fase 4,
+ * bloque 4.3): la misma cuenta de `reglaDelCajon`, dicha antes de pedir la
+ * firma. `null` = sin tope (la gerencia); cero = ya no puede, o su puesto no retira.
+ * Un importe pasa si es menor o igual a lo que queda.
+ */
+export function retiroDisponibleDelPuesto(input: {
+  readonly puesto: TopeDeRetiroDelPuesto;
+  readonly topeRetiroCents: bigint;
+  readonly retiradoEnElTurnoCents: bigint;
+}): bigint | null {
+  if (input.puesto === 'SIN_TOPE') return null;
+  if (input.puesto === 'NO_PUEDE') return 0n;
+  const queda = input.topeRetiroCents - input.retiradoEnElTurnoCents;
+  return queda > 0n ? queda : 0n;
+}
+
 // ── D-16 · La clase suelta apartada sin pagar ───────────────────────────────
 
 /** Cuánto antes de la clase se libera un lugar apartado que nadie pagó. */

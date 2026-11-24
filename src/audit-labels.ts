@@ -48,6 +48,14 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'cash.movement.create': 'registró un movimiento de caja{m}',
   // Bloque 3.5 (D-15): los topes del cajón de un gimnasio.
   'cash.limits.update': 'cambió los topes del cajón',
+  // D-18 (bloque 4.4): los plazos del socio y la deuda que se da por perdida.
+  'settings.retention_terms.update': 'cambió los plazos de retención',
+  'billing.debt_terms.update': 'cambió los plazos de la deuda',
+  // Por socio (queda en su historia) y el resumen de la corrida (ese es el que va a «Para revisar»).
+  'billing.debt.lost': 'dio por perdida la deuda{m}{de socio}',
+  'billing.debt.lost.summary': 'dio deuda por perdida{m}',
+  // Bloque 4.3 (D-17): la gerencia revisa y cierra con su nota un corte con más de $20 de diferencia.
+  'cash.variance.review': 'revisó el descuadre de un corte{m}',
   'cash.register.create': 'dio de alta una caja',
   'cash.register.update': 'cambió una caja',
   'pos.sale.create': 'registró una venta de mostrador{m}{a socio}',
@@ -63,6 +71,12 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'expense.void': 'anuló un gasto fijo{m}',
   // D-22 (3.7): lo tardío de un mes cerrado se anota en el mes en curso.
   'expense.adjust': 'anotó un ajuste de un mes cerrado{m}',
+  // D-26 (4.5): la nómina por pago (sin decir a quién: eso se ve en Movimientos) y los gastos que se repiten.
+  'expense.payroll.pay': 'anotó un pago de nómina{m}',
+  'expense.recurring.create': 'dejó un gasto para que se proponga cada periodo{m}',
+  'expense.recurring.update': 'cambió el importe de un gasto que se repite{m}',
+  'expense.recurring.end': 'dejó de repetir un gasto{m}',
+  'expense.recurring.skip': 'descartó un gasto propuesto{m}',
   // Membresías y paquetes
   'membership.sale': 'vendió una membresía{m}{a socio}',
   'membership.create': 'creó una membresía{para socio}',
@@ -134,9 +148,16 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // Altas (3.4): completar lo vacío de la ficha (D-11) y el responsable del celular compartido o tutor (D-09, D-10).
   'member.complete': 'completó datos que faltaban en la ficha de {socio}',
   'member.responsible': 'anotó al responsable del celular de {socio}',
+  // Fase 4 · bloque 4.8 (D-36): el socio cambia su celular, su correo o su contacto de emergencia desde el portal
+  // (el actor del asiento es «El socio»), y el mostrador confirma con él que fue él.
+  'member.contact.self_update': 'actualizó desde el portal los datos de contacto de {socio}',
+  'member.contact.review': 'confirmó con {socio} el cambio de contacto que hizo desde el portal',
   'prospect.create': 'registró a un interesado',
   'prospect.close': 'cerró a un interesado que no se inscribió',
   'prospect.reopen': 'reabrió a un interesado',
+  // Interesados (D-31, bloque 4.7): el cierre solo a los 60 días sin contacto, que hace el cierre de la noche.
+  'prospect.auto_close': 'cerró a un interesado que llevaba mucho sin contacto',
+  'prospect.auto_close.start': 'fijó desde qué día los interesados sin contacto se cierran solos',
   'prospect.sources.update': 'cambió la lista de «¿Cómo se enteró?»',
   'prospect.update': 'actualizó un prospecto',
   'prospect.convert': 'convirtió un prospecto en socio',
@@ -258,6 +279,11 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // Plataforma (GymFlow sobre la marca)
   'platform.organization.create': 'GymFlow dio de alta la marca',
   'platform.organization.update': 'GymFlow editó los datos de la marca',
+  // D-27 (bloque 4.6): los datos y la marca los administra la plataforma; el gimnasio pide el cambio.
+  'platform.brand.update': 'GymFlow cambió los datos o la marca del gimnasio',
+  'platform.change_request.apply': 'GymFlow aplicó un cambio de datos que el gimnasio pidió',
+  'platform.change_request.reject': 'GymFlow rechazó un cambio de datos que el gimnasio pidió',
+  'settings.change_request.create': 'pidió a GymFlow un cambio en los datos o la marca del gimnasio',
   'platform.service.activate': 'GymFlow liberó el software',
   'platform.service.suspend': 'GymFlow suspendió el software',
   'platform.service.resume': 'GymFlow reanudó el servicio',
@@ -329,6 +355,8 @@ export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
     'billing.waiver.apply', 'billing.charge.void', 'billing.charge.create', 'cash.withdraw', 'pos.sale.void', 'expense.void', 'visitpack.adjust',
     // Bloque 3.5 (D-12, D-13): todo perdón y toda devolución, con o sin firma, se revisa.
     'billing.debt.waive', 'payments.return', 'payments.credit.return', 'pos.sale.return', 'cash.limits.update',
+    // D-18 (4.4): la deuda que sale de «Por cobrar» y quien cambia cuándo sale.
+    'billing.debt.lost.summary', 'billing.debt_terms.update', 'settings.retention_terms.update',
     'membership.override.', 'member.archive', 'approval.self',
     'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'catalog.plan.price_change', 'catalog.price_protection.', 'member.anonymize', 'member.export', 'health.read',
     'staff.password_reset', 'staff.reactivate', 'staff.role', 'staff.rescue', 'staff.unlock', 'staff.permissions', 'settings.approval_policy', 'settings.module.',

@@ -34,15 +34,20 @@ export type SeccionLiberable = {
   menuPermissions: readonly string[];
   /** Puestos que ven la pantalla aunque no tengan el permiso (la dueña consulta Sucursales y Módulos, D-23/D-25). */
   menuRoles?: readonly string[];
+  /**
+   * Lo que el dueño debe saber ANTES de liberarla (D-26, bloque 4.5): la
+   * pantalla de la llave lo pinta junto al interruptor, esté o no encendido.
+   */
+  warning?: string;
 };
 
 export const LOCKABLE_SECTIONS: readonly SeccionLiberable[] = [
   // Operación: viene con el puesto; el dueño la puede quitar persona por persona.
   { key: 'caja', name: 'Caja', group: 'operacion', defaultOpen: true, text: 'Abrir y cerrar turnos, retiros y el corte.', permissions: ['cash:session:open', 'cash:session:close', 'cash:session:read', 'cash:withdraw', 'cash:petty:record', 'cash:limits:set', 'cash:variance:approve'], menuPermissions: ['cash:session:read'] },
   { key: 'pos', name: 'Punto de venta', group: 'operacion', defaultOpen: true, text: 'Vender producto en mostrador y anular ventas.', permissions: ['pos:sale:create', 'pos:sale:void', 'pos:sale:return'], menuPermissions: ['pos:sale:create'] },
-  { key: 'tablero', name: 'Tablero', group: 'direccion', text: 'Cuánto entra, cuánto se gana y la cartera, por sucursal.', permissions: ['reports:financial:read', 'reports:month:close', 'billing:portfolio:read', 'payments:reconciliation:read', 'payments:reconciliation:resolve'], menuPermissions: ['reports:financial:read'] },
-  { key: 'movimientos', name: 'Movimientos', group: 'direccion', text: 'Entradas y salidas de dinero por día, y los gastos fijos.', permissions: ['reports:financial:read', 'expenses:manage'], menuPermissions: ['reports:financial:read'] },
-  { key: 'retencion', name: 'Retención', group: 'direccion', text: 'A quién llamar antes de que deje de venir.', permissions: ['reports:branch:read', 'retention:followup:write'], menuPermissions: ['reports:branch:read'] },
+  { key: 'tablero', name: 'Tablero', group: 'direccion', text: 'Cuánto entra, cuánto se gana y la cartera, por sucursal.', permissions: ['reports:financial:read', 'reports:month:close', 'billing:portfolio:read', 'billing:debt-terms:set', 'payments:reconciliation:read', 'payments:reconciliation:resolve'], menuPermissions: ['reports:financial:read'] },
+  { key: 'movimientos', name: 'Movimientos', group: 'direccion', text: 'Entradas y salidas de dinero por día, los gastos fijos y la nómina.', permissions: ['reports:financial:read', 'expenses:manage', 'expenses:payroll:read'], menuPermissions: ['reports:financial:read'], warning: 'Quien tenga Movimientos ve cuánto se le paga a cada persona del gimnasio: la nómina se anota pago por pago, con nombre.' },
+  { key: 'retencion', name: 'Retención', group: 'direccion', text: 'A quién llamar antes de que deje de venir.', permissions: ['reports:branch:read', 'retention:followup:write', 'retention:terms:set'], menuPermissions: ['reports:branch:read'] },
   { key: 'planes', name: 'Planes', group: 'direccion', text: 'Crear y cambiar planes y precios.', permissions: ['catalog:manage'], menuPermissions: ['catalog:read'] },
   { key: 'productos', name: 'Productos', group: 'direccion', text: 'Catálogo e inventario de la tienda.', permissions: ['pos:product:manage', 'pos:inventory:adjust'], menuPermissions: ['pos:product:manage'] },
   { key: 'personal', name: 'Personal', group: 'direccion', text: 'Dar de alta, cambiar y dar de baja al personal.', permissions: ['staff:read', 'staff:manage'], menuPermissions: ['staff:read'] },

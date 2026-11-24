@@ -125,6 +125,9 @@ export const PERMISSIONS = [
   // D-12 (bloque 3.5): ya no pide firma SIEMPRE. La gerencia perdona sola hasta una mensualidad
   // del socio; arriba de eso, `can()` exige la firma de la dueña (`waiverAllowanceCents`).
   p('billing:waiver:apply', 'Condonar deuda', { reason: true }),
+  // D-18 (bloque 4.4). Los plazos de la deuda (venta sin cobrar y deuda que se da por perdida)
+  // los cambia la gerencia SOLO con la firma de la dueña: dar dinero por perdido es control.
+  p('billing:debt-terms:set', 'Ajustar los plazos de la deuda', { reason: true, approval: true }),
 
   // ── payments ──────────────────────────────────────────────────────────────
   p('payments:record', 'Registrar un pago'),
@@ -191,10 +194,15 @@ export const PERMISSIONS = [
   p('reports:branch:read', 'Ver reportes de sucursal', { module: 'retention' }),
   // Anotar "le llamé" desde Retención es escribir: permiso propio, no el de ver (28-04).
   p('retention:followup:write', 'Anotar el seguimiento a un socio en riesgo', { module: 'retention' }),
+  // D-18 (bloque 4.4). Los plazos de retención (dejó de venir, baja, perdido, Recuperar) los ajusta
+  // la gerencia con motivo. Es del módulo base: «baja» también la cuentan el Inicio y el Tablero.
+  p('retention:terms:set', 'Ajustar los plazos de retención', { reason: true, module: 'core' }),
   p('reports:financial:read', 'Ver reportes financieros y KPIs'),
   // El cierre lo hace el gerente y lo firma el dueño: desde entonces el mes no se reescribe (fase 4).
   p('reports:month:close', 'Cerrar el mes', { reason: true, approval: true }),
   p('expenses:manage', 'Registrar y anular gastos fijos (renta, nómina, servicios)', { reason: true }),
+  // D-26 (fase 4, bloque 4.5): la nómina se anota por pago, con nombre. Verlo es de quien tiene Movimientos.
+  p('expenses:payroll:read', 'Ver cuánto se le paga a cada persona (nómina por pago)'),
   p('audit:read', 'Consultar la bitácora de auditoría'),
   p('audit:export', 'Exportar la bitácora de auditoría', { reason: true }),
   p('settings:branch', 'Configurar una sucursal'),

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { MODULE_GROUPS, type ModuleGroup } from '../modules.js';
 import { Fecha, Id, Instante } from './comun.js';
+import { GymBrand } from './datos-y-marca.js';
 
 const GRUPOS_DE_MODULO = Object.keys(MODULE_GROUPS) as [ModuleGroup, ...ModuleGroup[]];
 
@@ -17,6 +18,13 @@ export const Organization = z.object({
   /** Zona del gimnasio (IANA): manda en «hoy», el corte y los vencimientos. */
   timezone: z.string(),
   defaultCurrency: z.string(),
+  // Bloque 4.6 (D-27): lo que el recibo imprime del gimnasio. Lo administra la plataforma.
+  rfc: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  whatsapp: z.string().nullable().optional(),
+  receiptLegend: z.string().nullable().optional(),
+  /** Si hay logo (se pide aparte: `GET /organization/logo`). */
+  hasLogo: z.boolean().optional(),
 });
 export type Organization = z.infer<typeof Organization>;
 
@@ -32,8 +40,11 @@ export const Branch = z.object({
   /** `null` = usa la zona del gimnasio. */
   timezone: z.string().nullable(),
   isActive: z.boolean(),
+  /** Teléfono (E.164) y horario de la sucursal: los administra la plataforma (D-27, bloque 4.6); el panel solo los muestra. */
+  phone: z.string().nullable(),
+  openingHours: z.string().nullable(),
 });
-export type Branch = z.infer<typeof Branch>;
+export type Branch =z.infer<typeof Branch>;
 
 /** `GET /branches`. */
 export const BranchList = z.array(Branch);
@@ -194,5 +205,9 @@ export const GymProfile = z.object({
     monthsAfterArchive: z.number().int().nullable(),
   }),
   branches: z.object({ open: z.number().int(), closed: z.number().int() }),
+  /** RFC, logo, teléfonos, leyenda del recibo y el teléfono y horario de cada sucursal (bloque 4.6). */
+  brand: GymBrand,
+  /** Quien pregunta puede mandar «Pedir un cambio a GymFlow». */
+  canRequestChange: z.boolean(),
 });
 export type GymProfile = z.infer<typeof GymProfile>;
