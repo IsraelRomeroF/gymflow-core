@@ -32,5 +32,6 @@ export * from './vocabulario.js';
 export * from './calendario.js';
 export * from './motivos.js';
 export * from './privacidad.js';
+export * from './dinero-del-socio.js';
 // Los contratos de la API NO salen de aquí: van por `@gymflow/core/contracts`,
 // para que el portal no cargue el núcleo entero ni Zod con cada pantalla.

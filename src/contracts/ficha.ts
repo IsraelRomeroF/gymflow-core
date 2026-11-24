@@ -30,6 +30,10 @@ export const MemberPosSale = z.object({
   businessDate: Fecha,
   /** Quien la cobró; `null` si la cuenta ya no existe. */
   soldByName: z.string().nullable(),
+  /** D-13 (bloque 3.5): sigue marcada «por corregir». */
+  flagged: z.boolean().optional(),
+  /** D-13: el día en que se devolvió (la venta sigue «completada» en su día); `null` si no se devolvió. */
+  returnedOn: Fecha.nullable().optional(),
   lines: z.array(z.object({
     productId: Id,
     /** `null` si el producto ya se borró del catálogo. */

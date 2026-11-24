@@ -47,6 +47,16 @@ export const ERROR_REASONS = {
   ALREADY_PAID: 'El cargo ya no tiene saldo: ya se cobró.',
   CHARGE_HAS_PAYMENTS: 'El cargo tiene pagos aplicados: primero se revierte el pago.',
   ALREADY_VOIDED: 'Ya estaba anulado (un cargo, una venta de tienda o un gasto).',
+  // ── Dinero del socio, fase 3 (bloque 3.5 · D-12 a D-16) ──
+  NO_DEBT: 'El socio no debe nada: no hay adeudo que perdonar.',
+  NO_CREDIT: 'El socio no tiene saldo a favor (o no tanto) que devolver.',
+  RETURN_EXCEEDS_PAYMENT: 'La devolución pasa de lo que queda de ese cobro.',
+  RETURN_REFERENCE_REQUIRED: 'Una devolución por transferencia lleva su referencia o clave de rastreo.',
+  SALE_ALREADY_RETURNED: 'Esa venta de la tienda ya se devolvió.',
+  SALE_SAME_DAY: 'Esa venta es de hoy y su turno sigue abierto: se anula, no se devuelve.',
+  CASH_LIMIT_FORBIDDEN: 'Ese movimiento de caja pasa del tope del turno para tu puesto: lo hace la gerencia.',
+  CLASS_PAY_NOW: 'Debe su mensualidad: una clase suelta solo se aparta pagándola en el momento.',
+  CLASS_HOLD_CLOSED: 'Falta menos de una hora para la clase: ya no se aparta sin pagar.',
   ALREADY_REVERSED: 'El pago ya se revirtió o no se completó: no admite otra reversa ni reembolsos.',
   PAYMENT_HAS_REFUNDS: 'El pago ya tiene reembolsos: lo que queda se devuelve con otro reembolso.',
   // ── Membresías ──
@@ -64,6 +74,11 @@ export const ERROR_REASONS = {
   SOLD_AS_DAY_PASS: 'La visita suelta ya no se vende como membresía: es un pase del día.',
   // ── Socios y personal ──
   COACH_HAS_MEMBERS: 'El coach que se da de baja tiene socios asignados: la baja debe decir a quién pasan (`coachHandover`).',
+  // D-29 (bloque 3.8). Una sola razón para todo código que no sirve (no existe, caducó, ya se usó
+  // o el socio ya tiene coach): la respuesta no dice cuál, para que el código no sirva para averiguar nada.
+  COACH_CODE_INVALID: 'Ese código no sirve o ya caducó: el socio genera otro en su teléfono.',
+  // D-28 (bloque 3.8). El coach opera solo las sesiones que imparte.
+  NOT_YOUR_CLASS: 'Esa sesión la imparte otra persona: el coach solo opera las suyas.',
   DUPLICATE_MEMBER: 'El alta coincide con socios que ya existen: la respuesta trae `candidates`.',
   DUPLICATE_EMAIL: 'Ese correo ya tiene una cuenta.',
   // ── Captación (bloque 2.4) ──
@@ -89,6 +104,7 @@ export const ERROR_REASONS = {
   MODULE_NOT_CONTRACTED: 'El módulo (o uno que necesita) no está contratado.',
   MODULE_HAS_DEPENDENTS: 'Otro módulo encendido lo necesita.',
   MODULE_BLOCKED: 'Hay pendientes que resolver antes de apagar el módulo.',
+  MODULE_ERASURE_WARNING: 'Apagar el módulo borra datos pasado un plazo: hay que confirmar el aviso con el número que la pantalla enseña.',
   MODULE_OFF_IN_ORG: 'El módulo está apagado en todo el gimnasio: una sucursal no lo enciende sola.',
   BRANCH_HAS_STAFF: 'La sucursal todavía tiene personal asignado: no se cierra.',
   // ── Cierre de mes ──
@@ -113,6 +129,11 @@ export const ERROR_REASONS = {
   // ── Firmas: el «no» pegado a la operación (D-03, bloque 3.2) ──
   APPROVAL_REPLY_REQUIRED: 'Esa operación ya se rechazó: para volver a pedirla hay que contestar ese «no» (`reply`).',
   APPROVAL_REJECTED_RECENTLY: 'Esa operación se rechazó hace menos de 30 minutos: no se firma en el mostrador, solo desde la sesión de quien firma.',
+  // D-02 (bloque 3.1): el apoderado temporal.
+  APPROVAL_PROXY_BLOCKED_BY_REJECTION: 'Otra persona ya rechazó esa operación y su «no» sigue vigente: el apoderado no puede autorizarla.',
+  APPROVAL_PROXY_INVALID_PERSON: 'Esa persona no puede ser apoderada: no está activa en el gimnasio, es quien nombra o ya da la segunda firma por su puesto.',
+  APPROVAL_PROXY_INVALID_END: 'La fecha de fin del nombramiento no vale: va de hoy al último día permitido.',
+  APPROVAL_PROXY_NONE: 'No hay ningún apoderado vigente.',
 } as const;
 
 export type ErrorReason = keyof typeof ERROR_REASONS;

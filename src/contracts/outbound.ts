@@ -66,6 +66,12 @@ export const OutboundMessage = z.object({
   /** Cuándo se mandó, se descartó o caducó; `null` mientras está pendiente. */
   resolvedAt: Instante.nullable(),
   resolvedByName: z.string().nullable(),
+  /**
+   * Celular compartido (D-09; fase 3, bloque 3.10): el número es de OTRA
+   * persona, la responsable del celular, y el mensaje la saluda a ella y dice
+   * de quién se habla. `null` = el mensaje va al propio socio.
+   */
+  recipientName: z.string().nullable(),
 });
 export type OutboundMessage = z.infer<typeof OutboundMessage>;
 

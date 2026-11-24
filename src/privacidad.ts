@@ -103,8 +103,12 @@ export const MOTIVOS_DE_PRIVACIDAD = {
 
 // ── Permisos que se retiran ──────────────────────────────────────────────────
 
-/** Lo opcional, que el socio retira desde su teléfono sin ir a recepción. */
-export const REVOCABLES_POR_EL_SOCIO: readonly ConsentType[] = ['MARKETING', 'HEALTH_DATA', 'RECURRING_CHARGE'];
+/**
+ * Lo que el socio retira desde su teléfono sin ir a recepción: lo opcional y,
+ * desde D-32 (fase 3, bloque 3.10), su rostro: retirar el permiso biométrico
+ * revoca su rostro o huella y borra la plantilla en el acto.
+ */
+export const REVOCABLES_POR_EL_SOCIO: readonly ConsentType[] = ['MARKETING', 'HEALTH_DATA', 'RECURRING_CHARGE', 'BIOMETRIC'];
 /** Lo que se retira en recepción: lo opcional y la biometría (revoca el rostro y borra la plantilla). */
 export const REVOCABLES_EN_RECEPCION: readonly ConsentType[] = ['MARKETING', 'HEALTH_DATA', 'RECURRING_CHARGE', 'BIOMETRIC'];
 
@@ -113,10 +117,26 @@ export const CONSECUENCIA_DE_RETIRAR: Readonly<Record<string, { readonly persona
   MARKETING: { personal: 'Deja de recibir promociones y avisos de clases.', socio: 'Dejas de recibir promociones y avisos de clases. Puedes volver a aceptarlo cuando quieras.' },
   HEALTH_DATA: { personal: 'Se borra su nota de salud; el coach ya no la verá.', socio: 'Se borra la nota de salud que diste y tu coach ya no la verá. No se puede recuperar.' },
   RECURRING_CHARGE: { personal: 'Sus tarjetas dejan de cobrarse solas; paga en recepción o en su portal.', socio: 'Tu mensualidad ya no se cobrará sola a tu tarjeta: la pagas en recepción o desde Pagos.' },
-  BIOMETRIC: { personal: 'Se revoca su rostro o huella y la plantilla se borra en el acto; entra por recepción.', socio: 'Tu rostro deja de reconocerse y la plantilla se borra. Entras por recepción.' },
+  // Cómo entra después depende de la regla del rostro del gimnasio (D-06): al socio se lo dice `consecuenciaDeRetirarRostro`.
+  BIOMETRIC: { personal: 'Se revoca su rostro o huella y la plantilla se borra en el acto; entra por recepción.', socio: 'Tu rostro o huella deja de reconocerse y su plantilla se borra en el acto. No se puede recuperar.' },
   PRIVACY_NOTICE: { personal: 'Es obligatorio: solo se retira con la baja.', socio: 'Para retirarlo hay que darte de baja: pídelo en recepción.' },
   HOUSE_RULES: { personal: 'Es obligatorio: solo se retira con la baja.', socio: 'Para retirarlo hay que darte de baja: pídelo en recepción.' },
 };
+
+/**
+ * Lo que pasa al retirar el rostro, dicho al socio ANTES de confirmar (D-32 y
+ * D-06; fase 3, bloque 3.10). Con la regla «entrar solo con rostro» encendida
+ * en su sede, «entras por recepción» ya no es cierto: cada visita necesita la
+ * autorización de la gerencia.
+ */
+export function consecuenciaDeRetirarRostro(reglaDelRostro: boolean): { readonly borra: string; readonly comoEntras: string } {
+  return {
+    borra: CONSECUENCIA_DE_RETIRAR.BIOMETRIC!.socio,
+    comoEntras: reglaDelRostro
+      ? 'Tu gimnasio pide entrar con el rostro: sin él, en cada visita la gerencia tendrá que autorizar tu entrada en recepción, y si no hay quien autorice no podrás pasar.'
+      : 'Vas a entrar por recepción: dices tu nombre y te registran la entrada.',
+  };
+}
 
 // ── Lo que el aviso de privacidad tiene que decir ───────────────────────────
 
@@ -348,5 +368,18 @@ export function motivoDeAnonimizacionPorLista(periodo: string, meses: number): s
 
 /** El motivo con que se revoca el rostro de quien no regresó. */
 export const MOTIVO_ROSTRO_TRAS_LA_BAJA = `Pasaron ${CONSERVACION.rostroDiasTrasLaBaja} días desde su baja sin regresar`;
+
+/**
+ * BIOMETRÍA APAGADA (D-32, paréntesis; 3.12). «Igual si se apaga Biometría,
+ * con aviso»: los rostros dejan de reconocerse el día que se apaga y se borran
+ * el mismo plazo después (30 días) si no se vuelve a encender. `apagadaEl` es
+ * el día de la sede (o del gimnasio) en que se apagó.
+ */
+export function rostrosSeBorranAlApagar(apagadaEl: Date): Date {
+  return diaMasDias(diaUtc(apagadaEl), CONSERVACION.rostroDiasTrasLaBaja);
+}
+
+/** El motivo con que se revoca cada rostro cuando Biometría lleva apagada el plazo. */
+export const MOTIVO_ROSTRO_BIOMETRIA_APAGADA = `Biometría lleva ${CONSERVACION.rostroDiasTrasLaBaja} días apagada`;
 
 export * from './modelos-consentimiento.js';

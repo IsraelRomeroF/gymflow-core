@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Centavos, Id, Instante } from './comun.js';
-import { APPROVAL_DELIVERIES, APPROVAL_REACHES, APPROVAL_REQUEST_STATUSES, APPROVAL_RESOURCE_TYPES } from '../approvals.js';
+import { APPROVAL_DELIVERIES, APPROVAL_PROXY_END_REASONS, APPROVAL_REACHES, APPROVAL_REQUEST_STATUSES, APPROVAL_RESOURCE_TYPES } from '../approvals.js';
 
 /**
  * LA SEGUNDA FIRMA (`approvals/approvals.routes.ts`, auditoría 8, bloque 2.10).
@@ -19,6 +19,8 @@ export const ApprovalApprover = z.object({
   /** Sus firmas están en pausa por intentos fallidos hasta este instante (24-11). */
   pausedUntil: Instante.nullable(),
   reach: ApprovalReachSchema,
+  /** D-02: firma como apoderado de esta persona (su nombre); null = firma por su puesto. */
+  proxyOf: z.string().nullable(),
 });
 export type ApprovalApprover = z.infer<typeof ApprovalApprover>;
 
@@ -106,6 +108,8 @@ export type ApprovalRequest = z.infer<typeof ApprovalRequest>;
 /** `GET /approvals/requests/:id`: lo que ve quien la pidió. */
 export const ApprovalRequestState = ApprovalRequest.extend({
   approverName: z.string().nullable(),
+  /** D-02: quien contestó lo hizo como apoderado de esta persona (su nombre); null = contestó por su puesto. */
+  approverProxyOf: z.string().nullable(),
   /** La firma, mientras no se use ni venza (29-03). */
   approvalToken: z.string().nullable(),
   delivery: ApprovalDeliverySchema.nullable(),
@@ -140,6 +144,8 @@ export const ApprovalHistoryItem = z.object({
   status: z.enum(['APPROVED', 'REJECTED', 'EXPIRED', 'CANCELED']),
   requesterName: z.string().nullable(),
   approverName: z.string().nullable(),
+  /** D-02: quien contestó lo hizo como apoderado de esta persona (su nombre); null = contestó por su puesto. */
+  approverProxyOf: z.string().nullable(),
   mine: z.boolean(),
   createdAt: Instante,
   /** Cuándo se resolvió: la decisión o, en una vencida, su vencimiento. */
@@ -163,3 +169,56 @@ export const ApprovalHistory = z.object({
   windowHours: z.number().int(),
 });
 export type ApprovalHistory = z.infer<typeof ApprovalHistory>;
+
+// ── Apoderado temporal (D-02, bloque 3.1) ───────────────────────────────────
+
+/** Un nombramiento de apoderado. `active`: abierto y con su fecha de fin por delante. */
+export const ApprovalProxyAppointment = z.object({
+  id: Id,
+  proxyUserId: Id,
+  proxyName: z.string().nullable(),
+  grantedByUserId: Id,
+  grantedByName: z.string().nullable(),
+  note: z.string().nullable(),
+  createdAt: Instante,
+  /** Hasta cuándo vale: el fin del día elegido, en la zona del gimnasio. */
+  endsAt: Instante,
+  /** Cuándo y por qué dejó de valer; un vencido que nadie ha cerrado todavía dice `EXPIRED` con su `endsAt`. */
+  endedAt: Instante.nullable(),
+  endReason: z.enum(APPROVAL_PROXY_END_REASONS).nullable(),
+  active: z.boolean(),
+  /** Cuántas firmas dio y cuántas solicitudes rechazó con este nombramiento. */
+  signedCount: z.number().int(),
+  rejectedCount: z.number().int(),
+});
+export type ApprovalProxyAppointment = z.infer<typeof ApprovalProxyAppointment>;
+
+/** A quién se puede nombrar: personal activo del gimnasio con cuenta, salvo quien nombra. */
+export const ApprovalProxyCandidate = z.object({
+  userId: Id,
+  fullName: z.string(),
+  /** Su puesto, en palabras («Gerente», «Recepción»). */
+  roleLabel: z.string().nullable(),
+  /** Tiene una contraseña temporal o recién restablecida: todavía no puede firmar. */
+  cannotSignYet: z.boolean(),
+});
+export type ApprovalProxyCandidate = z.infer<typeof ApprovalProxyCandidate>;
+
+/**
+ * `GET /approvals/proxy`. `canManage`: quien consulta es quien da la segunda
+ * firma por su puesto (el dueño) y puede nombrar o revocar. `mine`: quien
+ * consulta ES el apoderado vigente. Los candidatos y la historia solo van
+ * para quien administra.
+ */
+export const ApprovalProxyState = z.object({
+  canManage: z.boolean(),
+  mine: z.boolean(),
+  current: ApprovalProxyAppointment.nullable(),
+  candidates: z.array(ApprovalProxyCandidate),
+  history: z.array(ApprovalProxyAppointment),
+  /** Hoy y el último día elegible como fin, en la fecha del gimnasio (`YYYY-MM-DD`). */
+  today: z.string(),
+  lastDay: z.string(),
+  maxDays: z.number().int(),
+});
+export type ApprovalProxyState = z.infer<typeof ApprovalProxyState>;

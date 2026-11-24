@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  ACCION_POR_SOLICITUD, CANAL_DE_CONSENTIMIENTO_SOCIO, CANAL_DE_SOLICITUD_ARCO, CONSECUENCIA_DE_RETIRAR, ESTADO_DE_SOLICITUD_ARCO,
+  ACCION_POR_SOLICITUD, CANAL_DE_CONSENTIMIENTO_SOCIO, CANAL_DE_SOLICITUD_ARCO, CONSECUENCIA_DE_RETIRAR, ESTADO_DE_SOLICITUD_ARCO, consecuenciaDeRetirarRostro,
   LISTA_DEL_AVISO_DE_PRIVACIDAD, PLAZOS_ARCO, PERMISSION_BY_KEY, REVOCABLES_EN_RECEPCION, REVOCABLES_POR_EL_SOCIO, ROLES,
   SOLICITUDES_DESDE_EL_PORTAL, TIPOS_DE_SOLICITUD_ARCO, TIPO_DE_SOLICITUD_ARCO, TIPO_DE_SOLICITUD_ARCO_PERSONAL, TIPO_DE_SOLICITUD_ARCO_SOCIO,
   corchetesSinCompletar, estadoDeSolicitud, faltantesDelAviso, folioDeSolicitud, modeloDeTexto, plazoVigente, puntosSinRevisar,
@@ -37,8 +37,16 @@ describe('solicitudes ARCO: vocabulario', () => {
     expect(CANAL_DE_CONSENTIMIENTO_SOCIO.SELF).toBeUndefined();
   });
 
-  it('lo que se retira: lo opcional desde el teléfono; la biometría, en recepción; lo obligatorio, con la baja', () => {
-    expect([...REVOCABLES_POR_EL_SOCIO].sort()).toEqual(['HEALTH_DATA', 'MARKETING', 'RECURRING_CHARGE']);
+  // Fase 3, bloque 3.10 (D-32): el socio también retira su rostro desde el teléfono; antes solo en recepción.
+  it('lo que se retira: lo opcional y el rostro desde el teléfono o en recepción; lo obligatorio, con la baja', () => {
+    expect([...REVOCABLES_POR_EL_SOCIO].sort()).toEqual(['BIOMETRIC', 'HEALTH_DATA', 'MARKETING', 'RECURRING_CHARGE']);
+    expect(REVOCABLES_POR_EL_SOCIO).not.toContain('PRIVACY_NOTICE');
+    // Antes de confirmar se le dice cómo va a entrar, y con la regla del rostro (D-06) no es «por recepción».
+    expect(consecuenciaDeRetirarRostro(false).comoEntras).toMatch(/por recepción/);
+    expect(consecuenciaDeRetirarRostro(true).comoEntras).toMatch(/gerencia/);
+    expect(consecuenciaDeRetirarRostro(true).comoEntras).toMatch(/cada visita/);
+    expect(consecuenciaDeRetirarRostro(true).borra).toMatch(/se borra en el acto/);
+    expect(CONSECUENCIA_DE_RETIRAR.BIOMETRIC!.socio).not.toMatch(/Entras por recepción/);
     expect(REVOCABLES_EN_RECEPCION).toContain('BIOMETRIC');
     expect(REVOCABLES_EN_RECEPCION).not.toContain('PRIVACY_NOTICE');
     for (const t of ['MARKETING', 'HEALTH_DATA', 'RECURRING_CHARGE', 'BIOMETRIC', 'PRIVACY_NOTICE', 'HOUSE_RULES']) {

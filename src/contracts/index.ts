@@ -22,6 +22,7 @@ export * from './members.js';
 export * from './access.js';
 export * from './biometrics.js';
 export * from './billing.js';
+export * from './dinero-del-socio.js';
 export * from './cash.js';
 export * from './pos.js';
 export * from './ficha.js';

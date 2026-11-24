@@ -20,7 +20,8 @@ describe('movimientos de caja', () => {
 
   it('todo lo que saca dinero exige aprobación; meter fondo no', () => {
     expect(movementRequiresApproval('WITHDRAWAL')).toBe(true);
-    expect(movementRequiresApproval('EXPENSE')).toBe(true);
+    // D-15: el gasto chico ya no pide firma siempre (la pide arriba del tope: `reglaDelCajon`).
+    expect(movementRequiresApproval('EXPENSE')).toBe(false);
     expect(movementRequiresApproval('DEPOSIT')).toBe(true);
     expect(movementRequiresApproval('CORRECTION')).toBe(true);
     expect(movementRequiresApproval('FLOAT_IN')).toBe(false);

@@ -35,8 +35,9 @@ export const MOVEMENT_RULES: Readonly<Record<CashMovementType, {
   FLOAT_IN:   { direction: 1,  requiresApproval: false, description: 'Entrada de fondo' },
   /// Retiro parcial a la caja fuerte. Es el movimiento que más se abusa.
   WITHDRAWAL: { direction: -1, requiresApproval: true,  description: 'Retiro a caja fuerte' },
-  /// Gasto menor pagado del cajón.
-  EXPENSE:    { direction: -1, requiresApproval: true,  description: 'Gasto de caja chica' },
+  /// Gasto menor pagado del cajón. Desde D-15 (bloque 3.5) pasa sin firma hasta el tope
+  /// chico del gimnasio; arriba la pide. Quién firma qué lo decide `reglaDelCajon`.
+  EXPENSE:    { direction: -1, requiresApproval: false, description: 'Gasto de caja chica' },
   /// Envío al banco.
   DEPOSIT:    { direction: -1, requiresApproval: true,  description: 'Depósito bancario' },
   /// Corrección con motivo. Puede ir en cualquier dirección.

@@ -46,6 +46,21 @@ export const ProductList = z.object({
 });
 export type ProductList = z.infer<typeof ProductList>;
 
+/**
+ * Cómo va la corrección de una venta (D-13, bloque 3.5): la marca «por
+ * corregir» que deja recepción y, si ya se devolvió, su devolución.
+ */
+export const PosSaleCorrection = z.object({
+  /** `null` si nadie la marcó o la marca ya se resolvió. */
+  flag: z.object({ reason: z.string(), flaggedAt: Instante, flaggedByName: z.string().nullable() }).nullable(),
+  /** La devolución de otro día, si la hubo: la venta sigue «completada» en su día. */
+  returned: z.object({
+    amountCents: Centavos, method: PaymentMethodSchema, businessDate: Fecha, reason: z.string(),
+    returnRef: z.string().nullable(), approvedByName: z.string().nullable(),
+  }).nullable(),
+});
+export type PosSaleCorrection = z.infer<typeof PosSaleCorrection>;
+
 /** Una venta de mostrador. `POST /pos/sales` (201, también en el reintento) y `GET /pos/sales/:id`. */
 export const PosSale = z.object({
   id: Id,
@@ -73,8 +88,25 @@ export const PosSale = z.object({
     /** A qué precio salió: `MEMBER` si se aplicó el precio de socio (D-21). */
     priceKind: PosPriceKind,
   })),
+  /** Solo en `GET /pos/sales/:id` y en las rutas de corrección (D-13). */
+  correction: PosSaleCorrection.optional(),
+  /** Qué se puede hacer hoy con ella: anularla (mismo día, turno abierto) o devolverla (otro día). Solo en `GET /pos/sales/:id`. */
+  canVoid: z.boolean().optional(),
+  canReturn: z.boolean().optional(),
 });
 export type PosSale = z.infer<typeof PosSale>;
+
+/** `GET /pos/sales/flagged`: las ventas que recepción marcó «por corregir» y nadie ha resuelto (D-13). */
+export const FlaggedPosSales = z.object({
+  items: z.array(z.object({
+    saleId: Id, branchId: Id, folio: z.string().nullable(), totalCents: Centavos, method: PaymentMethodSchema.nullable(),
+    businessDate: Fecha, soldAt: Instante, memberId: Id.nullable(),
+    reason: z.string(), flaggedAt: Instante, flaggedByName: z.string().nullable(),
+    /** `true` si todavía se puede anular (es de hoy y su turno sigue abierto); si no, toca devolución. */
+    sameDay: z.boolean(),
+  })),
+});
+export type FlaggedPosSales = z.infer<typeof FlaggedPosSales>;
 
 /** `GET /pos/sales?branchId=`: las ventas de HOY (fecha de negocio) de esa sede, también las anuladas. */
 export const PosSaleList = z.object({ sales: z.array(PosSale) });

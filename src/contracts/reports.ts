@@ -275,6 +275,8 @@ export const Pulse = z.object({
     lastMonthTotalProfitCents: Centavos,
     newMembers: z.number().int(),
     leftMembers: z.number().int(),
+    /** Pases de prueba gratis dados en el mes (D-08; 3.12). */
+    trialPasses: z.number().int(),
   }),
   alerts: z.object({
     /** Cortes con faltante de los últimos 7 días (hasta 10). */
@@ -292,6 +294,8 @@ export const Pulse = z.object({
     pendingApprovals: z.object({ count: z.number().int(), oldest: Instante.nullable() }),
     /** Operaciones «para revisar» de hoy (bitácora). */
     sensitiveToday: z.number().int(),
+    /** Entradas autorizadas sin rostro en los últimos 7 días (D-06; 3.12). */
+    entriesWithoutFace7d: z.number().int(),
   }),
   owed: z.object({
     overdueCents: Centavos, outstandingCents: Centavos, membersBehind: z.number().int(),

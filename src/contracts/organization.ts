@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { MODULE_GROUPS, type ModuleGroup } from '../modules.js';
-import { Id, Instante } from './comun.js';
+import { Fecha, Id, Instante } from './comun.js';
 
 const GRUPOS_DE_MODULO = Object.keys(MODULE_GROUPS) as [ModuleGroup, ...ModuleGroup[]];
 
@@ -79,6 +79,22 @@ const CambioDeModulo = z.object({
   byName: z.string().nullable(),
 });
 
+/**
+ * LO QUE APAGAR UN MÓDULO BORRA (3.12; D-32: los rostros de Biometría, a los
+ * 30 días y con aviso). Encendido (`pending: false`): cuántos se borrarían y
+ * qué día si se apagara hoy; ese `count` es el que hay que mandar como
+ * `erasureAcknowledged` para apagarlo. Apagado con el aviso confirmado
+ * (`pending: true`): cuántos quedan guardados, el día ya fijado y cuántos
+ * decía el aviso (`warned`). No viaja (o es `null`) cuando no hay nada que borrar.
+ */
+export const ModuleErasure = z.object({
+  pending: z.boolean(),
+  count: z.number().int(),
+  on: Fecha,
+  warned: z.number().int().nullable(),
+});
+export type ModuleErasure = z.infer<typeof ModuleErasure>;
+
 /** Cómo va un módulo en una sucursal (solo los opcionales de alcance por sucursal). */
 export const ModuleAtBranch = z.object({
   branchId: Id,
@@ -90,11 +106,15 @@ export const ModuleAtBranch = z.object({
   reason: z.string().nullable().optional(),
   at: Instante.optional(),
   byName: z.string().nullable().optional(),
+  /** Lo que apagarlo AHÍ borra, o ya tiene fecha de borrado. Solo para quien dirige o audita. */
+  erasure: ModuleErasure.nullable().optional(),
 });
 export type ModuleAtBranch = z.infer<typeof ModuleAtBranch>;
 
 /** Un módulo del gimnasio tal como lo cuenta `GET /organization/modules`. */
 export const OrganizationModule = z.object({
+  /** Lo que apagarlo en TODO el gimnasio borra, o ya tiene fecha de borrado (`ModuleErasure`). Solo para quien dirige o audita. */
+  erasure: ModuleErasure.nullable().optional(),
   key: z.string(),
   name: z.string(),
   description: z.string(),

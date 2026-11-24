@@ -38,7 +38,10 @@ describe('catálogo de puestos (ADR-039, cuatro puestos desde el 2026-10-05)', (
     expect(ROLE_BY_KEY.get('MANAGER')!.scope).toBe('org');
     // Recepción atiende, cobra y lleva su caja; no modifica.
     expect(tiene('RECEPTION', 'members:create') && tiene('RECEPTION', 'payments:record') && tiene('RECEPTION', 'cash:session:open') && tiene('RECEPTION', 'pos:sale:create')).toBe(true);
-    expect(tiene('RECEPTION', 'members:update') || tiene('RECEPTION', 'cash:withdraw') || tiene('RECEPTION', 'billing:discount:apply')).toBe(false);
+    expect(tiene('RECEPTION', 'members:update') || tiene('RECEPTION', 'billing:discount:apply')).toBe(false);
+    // D-15 (bloque 3.5): recepción anota fondo y gasto chico, y retira o deposita con firma. No perdona, no devuelve y no cambia los topes.
+    expect(tiene('RECEPTION', 'cash:petty:record') && tiene('RECEPTION', 'cash:withdraw')).toBe(true);
+    expect(tiene('RECEPTION', 'billing:waiver:apply') || tiene('RECEPTION', 'payments:refund') || tiene('RECEPTION', 'pos:sale:return') || tiene('RECEPTION', 'cash:limits:set')).toBe(false);
     // El coach da clases y entrena; nada de dinero.
     expect(tiene('COACH', 'classes:book_for_member') && tiene('COACH', 'training:assign')).toBe(true);
     expect(tiene('COACH', 'payments:record') || tiene('COACH', 'cash:session:read')).toBe(false);

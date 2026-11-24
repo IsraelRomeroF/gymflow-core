@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  AUDIT_CATEGORIES, AUDIT_LABELS, AUDIT_REVIEW_CONDITIONAL, AUDIT_SUMMARIZED, auditAmountCents, auditCategoryOf, auditLabel, auditLabelNames,
+  AUDIT_CATEGORIES, AUDIT_LABELS, AUDIT_REVIEW_CONDITIONAL, AUDIT_SUMMARIZED, AUDIT_SUMMARIZED_WITHOUT_FACE, auditAmountCents, auditCategoryOf, auditLabel, auditLabelNames,
   auditNeedsReview, auditPhrase, auditReviewReason,
 } from '../src/audit-labels.js';
 
@@ -176,6 +176,19 @@ describe('bitácora en palabras (DP-05)', () => {
       expect(auditNeedsReview({ action: a }), a).toBe(false);
       expect(auditCategoryOf(a)).toBe('acceso');
     }
+  });
+
+  it('las entradas autorizadas sin rostro se resumen aparte de las excepciones del mostrador (D-06; 3.12)', () => {
+    expect(AUDIT_SUMMARIZED_WITHOUT_FACE).toEqual(['access.entry.authorize_without_face']);
+    for (const a of AUDIT_SUMMARIZED_WITHOUT_FACE) {
+      // No gastan el tope de excepciones de nadie: no pueden estar en la otra lista.
+      expect(AUDIT_SUMMARIZED, a).not.toContain(a);
+      expect(auditNeedsReview({ action: a }), a).toBe(false);
+      expect(auditCategoryOf(a)).toBe('acceso');
+      expect(AUDIT_LABELS[a], a).toBeTruthy();
+    }
+    // Encender o apagar la regla sí es para revisar, uno por uno.
+    expect(auditNeedsReview({ action: 'access.face_rule.change' })).toBe(true);
   });
 
   it('lo que la plataforma hace en su consola tiene frase y categoría (24-19, 23-09)', () => {

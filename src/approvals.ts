@@ -35,7 +35,7 @@ export const APPROVAL_DELIVERIES = ['ready', 'used', 'expired'] as const;
 export type ApprovalDelivery = (typeof APPROVAL_DELIVERIES)[number];
 
 /** De qué registro se trata lo que se firma: la bandeja lo lee de la base, no del texto de quien pide (29-01, UXG-05). */
-export const APPROVAL_RESOURCE_TYPES = ['CashSession', 'Payment', 'Charge', 'Membership', 'Member', 'VisitPack', 'MonthlyClose'] as const;
+export const APPROVAL_RESOURCE_TYPES = ['CashSession', 'Payment', 'Charge', 'Membership', 'Member', 'VisitPack', 'MonthlyClose', 'PosSale', 'CashLimits'] as const;
 export type ApprovalResourceType = (typeof APPROVAL_RESOURCE_TYPES)[number];
 
 export function isApprovalResourceType(v: string): v is ApprovalResourceType {
@@ -51,15 +51,21 @@ export function isApprovalResourceType(v: string): v is ApprovalResourceType {
 export const APPROVAL_RESOURCES_BY_PERMISSION: Readonly<Record<string, readonly ApprovalResourceType[]>> = {
   'cash:withdraw': ['CashSession'],
   'payments:reverse': ['Payment'],
-  'payments:refund': ['Payment'],
+  // D-13 (bloque 3.5): también el saldo a favor de un socio, cuando pide que se le devuelva.
+  'payments:refund': ['Payment', 'Member'],
   'billing:charge:void': ['Charge'],
   'billing:discount:apply': ['Charge'],
-  'billing:waiver:apply': ['Charge', 'Membership'],
+  // D-12 (bloque 3.5): también el adeudo entero de un socio, al darlo de baja o al cancelar.
+  'billing:waiver:apply': ['Charge', 'Membership', 'Member'],
   'members:anonymize': ['Member'],
   // D-06 (bloque 3.3): la entrada de un socio sin rostro. Si la gerencia no está, la firma la dueña.
   'access:entry:authorize': ['Member'],
   'members:balance:adjust': ['Member'],
   'memberships:visitpack:adjust': ['VisitPack'],
+  // D-13 (bloque 3.5): la devolución de una venta de tienda de otro día.
+  'pos:sale:return': ['PosSale'],
+  // D-15: los topes del cajón de un gimnasio (el registro es el gimnasio mismo).
+  'cash:limits:set': ['CashLimits'],
   'reports:month:close': ['MonthlyClose'],
 };
 
@@ -179,6 +185,41 @@ export const APPROVAL_NOTE_MAX = 300;
 
 /** Preguntas de un toque para quien firma: «Preguntar» en vez de «No autorizar». */
 export const APPROVAL_QUESTION_SUGGESTIONS = ['¿De qué socio es?', '¿Para qué es?', '¿Ya contaste el cajón?', 'Llámame antes'] as const;
+
+/**
+ * APODERADO TEMPORAL (D-02, bloque 3.1).
+ *
+ * Solo el dueño da la segunda firma; si estaba sin señal o enfermo, nada se
+ * hacía. Ahora nombra desde su teléfono a UNA persona con fecha de fin, que
+ * firma lo que piden los demás (nunca lo suyo) con la autoridad del dueño, y
+ * la bitácora dice «firmó como apoderado». El nombramiento se apaga solo.
+ */
+
+/** Lo más que dura un nombramiento de apoderado, en días naturales contando hoy. */
+export const APPROVAL_PROXY_MAX_DAYS = 30;
+
+/** Por qué dejó de valer un nombramiento antes de leerse como vencido. */
+export const APPROVAL_PROXY_END_REASONS = ['REVOKED', 'EXPIRED', 'REPLACED'] as const;
+export type ApprovalProxyEndReason = (typeof APPROVAL_PROXY_END_REASONS)[number];
+
+export function isApprovalProxyEndReason(v: string): v is ApprovalProxyEndReason {
+  return (APPROVAL_PROXY_END_REASONS as readonly string[]).includes(v);
+}
+
+/** ¿Vale el nombramiento en este instante? Abierto y con su fecha de fin por delante. */
+export function approvalProxyActive(p: { endsAt: Date; endedAt: Date | null }, now: Date = new Date()): boolean {
+  return p.endedAt === null && p.endsAt > now;
+}
+
+/**
+ * El último día que se puede elegir como fin: hoy más `APPROVAL_PROXY_MAX_DAYS - 1`
+ * (30 días contando hoy). `today` y el resultado, como fecha del gimnasio (`YYYY-MM-DD`).
+ */
+export function approvalProxyLastDay(today: string): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + APPROVAL_PROXY_MAX_DAYS - 1);
+  return d.toISOString().slice(0, 10);
+}
 
 /** ¿Sigue cerrada la firma en el mostrador por un «no» dado en `rejectedAt`? Devuelve hasta cuándo, o null. */
 export function approvalRejectLockUntil(rejectedAt: Date, now: Date = new Date()): Date | null {

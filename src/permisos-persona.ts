@@ -26,15 +26,19 @@ export const ADJUSTABLE_BY_ROLE: Readonly<Record<'RECEPTION' | 'COACH', readonly
     { name: 'Socios', permissions: ['members:create', 'members:update', 'members:portal:invite', 'members:message:send', 'members:intake:review', 'members:health:read', 'access:biometric:enroll'] },
     { name: 'Membresías', permissions: ['memberships:create', 'memberships:visitpack:manage', 'memberships:freeze', 'memberships:change_plan'] },
     { name: 'Cobro', permissions: ['payments:record', 'billing:charge:create', 'billing:discount:apply'] },
-    { name: 'Caja', permissions: ['cash:session:open', 'cash:session:close', 'cash:withdraw'] },
+    // `cash:petty:record` y `cash:withdraw` vienen con el puesto desde D-15 (bloque 3.5); aquí se le quitan a quien no deba.
+    { name: 'Caja', permissions: ['cash:session:open', 'cash:session:close', 'cash:petty:record', 'cash:withdraw'] },
     { name: 'Punto de venta', permissions: ['pos:sale:create', 'pos:sale:void'] },
     { name: 'Acceso', permissions: ['access:monitor', 'access:manual_grant', 'access:credential:manage'] },
-    { name: 'Clases', permissions: ['classes:book_for_member', 'classes:manage'] },
+    // `classes:session:operate` (D-28): suplente y cupo. A quien recepción arma el horario se le
+    // enciende junto con `classes:manage`. Cancelar (`classes:session:cancel`) no está en ninguna lista.
+    { name: 'Clases', permissions: ['classes:book_for_member', 'classes:session:operate', 'classes:manage'] },
     { name: 'Entrenamiento', permissions: ['training:read', 'training:template:manage', 'training:assign'] },
   ],
   COACH: [
     { name: 'Socios', permissions: ['members:health:read'] },
-    { name: 'Clases', permissions: ['classes:book_for_member', 'classes:manage'] },
+    // `classes:manage` ya no viene con el puesto (D-28): armar el horario se da por persona.
+    { name: 'Clases', permissions: ['classes:book_for_member', 'classes:session:operate', 'classes:manage'] },
     { name: 'Entrenamiento', permissions: ['training:template:manage', 'training:assign'] },
   ],
 };

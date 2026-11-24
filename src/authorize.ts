@@ -64,6 +64,13 @@ export type ResourceScope = {
   readonly approvedByUserId?: string | undefined;
   /** Uso acumulado en el turno, para los límites que solo alertan. */
   readonly shiftUsageCount?: number | undefined;
+  /**
+   * D-12 (bloque 3.5): lo que a ESTE socio todavía se le puede perdonar sin la
+   * firma de la dueña (una mensualidad suya menos lo ya perdonado sin firma en
+   * los últimos 30 días; `perdonSinFirma` del núcleo). Lo calcula la ruta, que
+   * es quien ve la base. Sin este dato, condonar pide firma siempre.
+   */
+  readonly waiverAllowanceCents?: bigint | undefined;
 };
 
 export type DenyCode =
@@ -174,26 +181,56 @@ function checkLimits(
   const { limits } = ctx;
 
   switch (permission) {
-    case 'billing:discount:apply':
-      return amountGate(
-        'maxDiscountPercent',
-        limits.maxDiscountPercent === null ? null : BigInt(Math.round(limits.maxDiscountPercent * 100)),
-        resource.percent === undefined ? undefined : BigInt(Math.round(resource.percent * 100)),
-        approved,
-        `descuento por encima de ${limits.maxDiscountPercent}%`,
-      );
+    case 'billing:discount:apply': {
+      const tope = limits.maxDiscountPercent === null ? null : BigInt(Math.round(limits.maxDiscountPercent * 100));
+      const pedido = resource.percent === undefined ? undefined : BigInt(Math.round(resource.percent * 100));
+      /**
+       * Choque 5 de la auditoría 8 (D-15, bloque 3.5): un descuento por encima
+       * del tope del puesto es, en lo que excede, un perdón. Solo puede pedirlo
+       * (con firma) quien puede perdonar; el puesto que no perdona nada
+       * (`maxWaiverAmountCents` en cero: recepción) NUNCA pasa de su tope, ni
+       * con la firma de la dueña. Antes recepción «pedía firma» para un 50 %.
+       */
+      if (tope !== null && tope > 0n && pedido !== undefined && pedido > tope && limits.maxWaiverAmountCents === 0n) {
+        return { outcome: 'DENY', code: 'LIMIT_FORBIDDEN', detail: `Tu puesto no descuenta más de ${limits.maxDiscountPercent} %: pídeselo a la gerencia` };
+      }
+      return amountGate('maxDiscountPercent', tope, pedido, approved, `descuento por encima de ${limits.maxDiscountPercent}%`);
+    }
 
-    case 'billing:waiver:apply':
-      return amountGate('maxWaiverAmountCents', limits.maxWaiverAmountCents, resource.amountCents, approved,
-        'condonación por encima del límite del rol');
+    /**
+     * D-12: la gerencia perdona sola hasta una mensualidad del socio; arriba,
+     * con la firma de la dueña. El tope del puesto (`maxWaiverAmountCents`)
+     * sigue valiendo: en cero, el puesto no perdona; con importe, es otro techo.
+     */
+    case 'billing:waiver:apply': {
+      if (limits.maxWaiverAmountCents === 0n) {
+        return { outcome: 'DENY', code: 'LIMIT_FORBIDDEN', detail: 'maxWaiverAmountCents: el rol no está autorizado' };
+      }
+      if (resource.amountCents === undefined) {
+        return { outcome: 'DENY', code: 'LIMIT_FORBIDDEN', detail: 'maxWaiverAmountCents: falta el monto a evaluar' };
+      }
+      if (approved) return ALLOW;
+      const delSocio = resource.waiverAllowanceCents ?? 0n;
+      const tope = limits.maxWaiverAmountCents === null || delSocio < limits.maxWaiverAmountCents ? delSocio : limits.maxWaiverAmountCents;
+      if (resource.amountCents <= tope) return ALLOW;
+      return { outcome: 'REQUIRE_APPROVAL', limit: 'waiverAllowanceCents', detail: 'perdón por encima de una mensualidad del socio: lo firma la dueña' };
+    }
 
     case 'members:balance:adjust':
       return amountGate('maxManualBalanceAdjustCents', limits.maxManualBalanceAdjustCents, resource.amountCents, approved,
         'ajuste de saldo por encima del límite del rol');
 
+    /**
+     * D-15 (bloque 3.5): aquí solo se decide si el puesto retira (en cero, no).
+     * Que el retiro lleve SIEMPRE firma y que recepción no pase de su tope
+     * acumulado por turno (ni con firma) lo decide `reglaDelCajon` con el tope
+     * del gimnasio, en el servicio de caja, que es quien ve el turno.
+     */
     case 'cash:withdraw':
-      return amountGate('maxCashWithdrawalCents', limits.maxCashWithdrawalCents, resource.amountCents, approved,
-        'retiro por encima del límite del turno');
+      if (limits.maxCashWithdrawalCents === 0n) {
+        return { outcome: 'DENY', code: 'LIMIT_FORBIDDEN', detail: 'maxCashWithdrawalCents: el rol no está autorizado' };
+      }
+      return ALLOW;
 
     case 'payments:refund':
       return amountGate('maxRefundAmountCents', limits.maxRefundAmountCents, resource.amountCents, approved,

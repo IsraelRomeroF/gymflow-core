@@ -44,7 +44,7 @@ describe('segunda firma en el núcleo (bloque 0.9)', () => {
     // Lo que no lleva segunda firma no tiene tipo: el servidor no la pide a distancia.
     expect(approvalResourceTypesFor('members:read')).toEqual([]);
     // La condonación puede ser de un cargo o del adeudo de una membresía.
-    expect(approvalResourceTypesFor('billing:waiver:apply')).toEqual(['Charge', 'Membership']);
+    expect(approvalResourceTypesFor('billing:waiver:apply')).toEqual(['Charge', 'Membership', 'Member']);
     expect(APPROVAL_RESOURCE_OPTIONAL.has('reports:month:close')).toBe(true);
     expect(APPROVAL_RESOURCE_TYPES).toContain('MonthlyClose');
   });

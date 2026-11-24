@@ -35,15 +35,27 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'billing.waiver.apply': 'condonó una deuda{m}{a socio}',
   'billing.discount.apply': 'aplicó un descuento{m}{a socio}',
   'billing.credit.apply': 'aplicó saldo a favor{m}{de socio}',
+  // Fase 3 · bloque 3.5 (D-12, D-13): perdonar con monto, lo no usado a favor y las devoluciones.
+  'membership.auto_renew.set': 'cambió si una membresía se renueva sola{de socio}',
+  'billing.debt.waive': 'perdonó el adeudo{m}{de socio}',
+  'billing.credit.unused': 'dejó a favor lo pagado y no usado{m}{de socio}',
+  'payments.return': 'devolvió una parte de un cobro{m}{a socio}',
+  'payments.credit.return': 'devolvió saldo a favor{m}{a socio}',
   'billing.settlement.deferred': 'difirió un cobro{de socio}',
   'cash.session.open': 'abrió caja',
   'cash.session.close': 'hizo el corte de caja',
   'cash.withdraw': 'retiró efectivo de la caja{m}',
   'cash.movement.create': 'registró un movimiento de caja{m}',
+  // Bloque 3.5 (D-15): los topes del cajón de un gimnasio.
+  'cash.limits.update': 'cambió los topes del cajón',
   'cash.register.create': 'dio de alta una caja',
   'cash.register.update': 'cambió una caja',
   'pos.sale.create': 'registró una venta de mostrador{m}{a socio}',
   'pos.sale.void': 'anuló una venta de mostrador{m}{a socio}',
+  // Bloque 3.5 (D-13): recepción avisa; la gerencia anula el mismo día o devuelve otro día, con firma.
+  'pos.sale.flag': 'marcó una venta de mostrador por corregir{m}',
+  'pos.sale.unflag': 'descartó el aviso de una venta por corregir',
+  'pos.sale.return': 'registró la devolución de una venta de mostrador{m}',
   'pos.product.create': 'dio de alta un producto',
   'pos.product.update': 'cambió un producto',
   'pos.inventory.adjust': 'ajustó inventario',
@@ -158,6 +170,8 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'class.schedule.cancel': 'canceló una sesión',
   'class.booking.override_cancel': 'canceló fuera de tiempo una reserva{de socio}',
   'class.booking.cancel': 'quitó una reserva de clase{de socio}',
+  // Bloque 3.5 (D-16): el lugar apartado sin pagar se libera una hora antes y no deja deuda.
+  'class.booking.release': 'liberó un lugar apartado sin pagar{m}{de socio}',
   // Horario flexible y reglas de reserva (bloque 2.5).
   'class.template.update': 'cambió un horario de clases',
   'class.schedule.create': 'agregó una sesión única',
@@ -196,6 +210,11 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'staff.permissions': 'ajustó los permisos de {persona} sobre su puesto',
   'member.coach': 'asignó o quitó el coach de {socio}',
   'member.coach.handover': 'pasó a otro coach los socios de {persona|una persona}',
+  // D-29 (bloque 3.8): el coach elegido al alta, y «Hacerme su coach» con el código del socio.
+  'member.coach.at_signup': 'eligió el coach de {socio} al darlo de alta',
+  'member.coach.claim': 'se hizo coach de {socio} con el código que el socio le dictó',
+  'member.coach.claim.failed': 'tecleó un código de «Hacerme su coach» que no sirvió',
+  'member.coach.claim.locked': 'agotó los intentos de «Hacerme su coach» y quedó en espera una hora',
   'class.template.coach': 'cambió quién imparte un horario de clases',
   'class.schedule.coach': 'cambió quién imparte una clase',
   'auth.password_change': 'cambió su contraseña',
@@ -226,6 +245,14 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'approval.remote.ask': 'preguntó antes de autorizar una solicitud{m}',
   'approval.remote.answer': 'contestó lo que le preguntaron sobre una solicitud{m}',
   'approval.local.after_reject': 'intentó firmar en el mostrador una operación{m} rechazada hace menos de 30 minutos',
+  // La 4.ª solicitud de la misma operación en una hora no se crea (D-03), pero queda dicho que se insistió (3.12).
+  'approval.remote.over_limit': 'quiso pedir por cuarta vez en una hora la misma autorización{m}',
+  // D-02 (bloque 3.1): el apoderado temporal. Quien firma con un nombramiento lleva «· firmó como apoderado de …» en su frase.
+  'approval.proxy.grant': 'nombró apoderado temporal a {persona|una persona}',
+  'approval.proxy.revoke': 'revocó el nombramiento de apoderado de {persona|una persona}',
+  'approval.proxy.replace': 'dio por terminado el nombramiento de apoderado de {persona|una persona} al nombrar a otra',
+  'approval.proxy.expire': 'dio por vencido el nombramiento de apoderado de {persona|una persona}',
+  'approval.proxy.blocked': 'intentó autorizar como apoderado una operación{m} que otra persona ya había rechazado',
   'audit.export': 'exportó la bitácora',
   'report.month.close': 'cerró el mes',
   // Plataforma (GymFlow sobre la marca)
@@ -300,6 +327,8 @@ export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
   sensibles: [
     'payments.reverse', 'payment.refund', 'payments.refund.ledger', 'payment.refund.unrecorded', 'payments.chargeback', 'payments.chargeback.needs_review',
     'billing.waiver.apply', 'billing.charge.void', 'billing.charge.create', 'cash.withdraw', 'pos.sale.void', 'expense.void', 'visitpack.adjust',
+    // Bloque 3.5 (D-12, D-13): todo perdón y toda devolución, con o sin firma, se revisa.
+    'billing.debt.waive', 'payments.return', 'payments.credit.return', 'pos.sale.return', 'cash.limits.update',
     'membership.override.', 'member.archive', 'approval.self',
     'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'catalog.plan.price_change', 'catalog.price_protection.', 'member.anonymize', 'member.export', 'health.read',
     'staff.password_reset', 'staff.reactivate', 'staff.role', 'staff.rescue', 'staff.unlock', 'staff.permissions', 'settings.approval_policy', 'settings.module.',
@@ -310,6 +339,10 @@ export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
     'access.face_rule.change',
     // Tras un «no», alguien quiso firmarla en el mostrador antes de los 30 minutos (D-03).
     'approval.local.after_reject',
+    // Alguien insistió una cuarta vez en una hora con la misma operación (D-03; 3.12).
+    'approval.remote.over_limit',
+    // El poder de firmar cambia de manos (D-02), y un apoderado quiso pasar por encima de un «no».
+    'approval.proxy.',
   ],
   socios: ['member.', 'members.import.', 'membership.', 'intake.', 'prospect.', 'consent.', 'privacy.', 'portal.', 'health.read'],
   acceso: ['access.'],
@@ -359,6 +392,14 @@ export const AUDIT_REVIEW_CONDITIONAL: Readonly<Record<string, { readonly why: s
  * (20-06): cada «déjalo pasar» es rutina; muchas de la misma persona, no.
  */
 export const AUDIT_SUMMARIZED: readonly string[] = ['access.manual_grant', 'access.manual_entry'];
+
+/**
+ * Las entradas que alguien con autoridad dejó pasar SIN ROSTRO (D-06; 3.12).
+ * Tampoco van una por una: con la regla encendida son de todos los días. Se
+ * resumen aparte de las excepciones del mostrador, por quién autorizó, día y
+ * sede, y sin tope: no gastan el «tope de excepciones por turno» de nadie.
+ */
+export const AUDIT_SUMMARIZED_WITHOUT_FACE: readonly string[] = ['access.entry.authorize_without_face'];
 
 const coincide = (prefijos: readonly string[], action: string): boolean =>
   prefijos.some((p) => (p.endsWith('.') ? action.startsWith(p) : action === p));
@@ -499,11 +540,20 @@ export function auditPhrase(e: AuditEntryData, nombres: { member?: string | null
     return `${modulo[2] === 'enable' ? 'encendió' : 'apagó'} el módulo ${nombre}${sede ? ` en ${sede}` : modulo[1] ? ' en una sucursal' : ''}${extra}`;
   }
   // La firma a distancia dice QUÉ se pidió (20-05): el resumen viaja en el asiento.
+  // «Firmó como apoderado» (D-02): el asiento de quien firma con un nombramiento lo dice, con de quién.
+  const apoderado = e.action.startsWith('approval.') && campo(e.afterState, 'asProxy') === true
+    ? ` · firmó como apoderado${texto('proxyOfName') ? ` de ${texto('proxyOfName')}` : ''}` : '';
+  // El nombramiento dice hasta cuándo (`afterState.endsOn`, "2026-12-05").
+  if (e.action === 'approval.proxy.grant') {
+    const dia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto('endsOn') ?? '');
+    const mes = dia ? MESES[Number(dia[2]) - 1] : undefined;
+    return `${auditLabel(e.action, datos)}${mes ? `, hasta el ${Number(dia![3])} de ${mes} de ${dia![1]}` : ''}`;
+  }
   if (e.action.startsWith('approval.remote.')) {
     const resumen = texto('summary');
-    if (resumen) return `${auditLabel(e.action, datos)} · ${resumen}`;
+    if (resumen) return `${auditLabel(e.action, datos)}${apoderado} · ${resumen}`;
   }
-  return auditLabel(e.action, datos);
+  return `${auditLabel(e.action, datos)}${apoderado}`;
 }
 
 /** La categoría de una acción, si cae en alguna (sin contar `sensibles`, que es transversal). */

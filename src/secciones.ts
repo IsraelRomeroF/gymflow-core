@@ -38,8 +38,8 @@ export type SeccionLiberable = {
 
 export const LOCKABLE_SECTIONS: readonly SeccionLiberable[] = [
   // Operación: viene con el puesto; el dueño la puede quitar persona por persona.
-  { key: 'caja', name: 'Caja', group: 'operacion', defaultOpen: true, text: 'Abrir y cerrar turnos, retiros y el corte.', permissions: ['cash:session:open', 'cash:session:close', 'cash:session:read', 'cash:withdraw', 'cash:variance:approve'], menuPermissions: ['cash:session:read'] },
-  { key: 'pos', name: 'Punto de venta', group: 'operacion', defaultOpen: true, text: 'Vender producto en mostrador y anular ventas.', permissions: ['pos:sale:create', 'pos:sale:void'], menuPermissions: ['pos:sale:create'] },
+  { key: 'caja', name: 'Caja', group: 'operacion', defaultOpen: true, text: 'Abrir y cerrar turnos, retiros y el corte.', permissions: ['cash:session:open', 'cash:session:close', 'cash:session:read', 'cash:withdraw', 'cash:petty:record', 'cash:limits:set', 'cash:variance:approve'], menuPermissions: ['cash:session:read'] },
+  { key: 'pos', name: 'Punto de venta', group: 'operacion', defaultOpen: true, text: 'Vender producto en mostrador y anular ventas.', permissions: ['pos:sale:create', 'pos:sale:void', 'pos:sale:return'], menuPermissions: ['pos:sale:create'] },
   { key: 'tablero', name: 'Tablero', group: 'direccion', text: 'Cuánto entra, cuánto se gana y la cartera, por sucursal.', permissions: ['reports:financial:read', 'reports:month:close', 'billing:portfolio:read', 'payments:reconciliation:read', 'payments:reconciliation:resolve'], menuPermissions: ['reports:financial:read'] },
   { key: 'movimientos', name: 'Movimientos', group: 'direccion', text: 'Entradas y salidas de dinero por día, y los gastos fijos.', permissions: ['reports:financial:read', 'expenses:manage'], menuPermissions: ['reports:financial:read'] },
   { key: 'retencion', name: 'Retención', group: 'direccion', text: 'A quién llamar antes de que deje de venir.', permissions: ['reports:branch:read', 'retention:followup:write'], menuPermissions: ['reports:branch:read'] },

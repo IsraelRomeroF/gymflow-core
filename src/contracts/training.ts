@@ -144,3 +144,40 @@ export type CoachToday = z.infer<typeof CoachToday>;
 /** `GET /coaches/:id/members`: cuántos socios tiene asignados un coach (para preguntar a quién pasan al darlo de baja). */
 export const CoachLoad = z.object({ count: z.number().int() });
 export type CoachLoad = z.infer<typeof CoachLoad>;
+
+// ── D-29 (fase 3, bloque 3.8): el coach de cada socio ───────────────────────
+
+/** `GET /members/coaches` y `GET /classes/coaches`: los coaches activos, para elegir uno. */
+export const CoachOptions = z.object({
+  coaches: z.array(z.object({ id: Id, fullName: z.string(), branchIds: z.array(Id) })),
+});
+export type CoachOptions = z.infer<typeof CoachOptions>;
+
+/** `PUT /members/:id/coach`: la gerencia pone, cambia o quita (`null`) el coach de un socio. */
+export const MemberCoachSet = z.object({ coachUserId: Id.nullable() });
+export type MemberCoachSet = z.infer<typeof MemberCoachSet>;
+
+/**
+ * El código de «Hacerme su coach»: seis dígitos, un solo uso y diez minutos.
+ * El socio lo genera en su teléfono y se lo DICTA a su coach; pedir otro
+ * anula el anterior.
+ */
+export const COACH_CODE = { digits: 6, minutes: 10, maxFailures: 5, windowMinutes: 60 } as const;
+
+/**
+ * `GET /portal/coach` y `POST /portal/coach/code`: lo que el socio ve de su coach.
+ *  - `coach`: el nombre de su coach, si tiene.
+ *  - `canAskCode`: no tiene coach y su gimnasio tiene coaches: puede generar un código.
+ *  - `code` y `expiresAt`: solo en la respuesta de generar; nunca se vuelve a leer.
+ */
+export const PortalCoach = z.object({
+  coach: z.string().nullable(),
+  canAskCode: z.boolean(),
+  code: z.string().nullable(),
+  expiresAt: Instante.nullable(),
+});
+export type PortalCoach = z.infer<typeof PortalCoach>;
+
+/** `POST /coach/claim`: el coach teclea el código y el socio pasa a ser suyo. */
+export const CoachClaimed = z.object({ memberId: Id, fullName: z.string(), memberCode: z.string().nullable() });
+export type CoachClaimed = z.infer<typeof CoachClaimed>;

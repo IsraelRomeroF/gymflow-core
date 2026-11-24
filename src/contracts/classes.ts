@@ -41,6 +41,8 @@ export const SessionBooking = z.object({
   pendingCents: Centavos,
   /** «$150.00» cuando falta por pagar; si no, `null`. */
   pendingLabel: z.string().nullable(),
+  /** D-16 (bloque 3.5): si sigue sin pagar, hasta cuándo se le guarda el lugar (una hora antes); pasada esa hora se libera y no debe nada. */
+  holdUntil: Instante.nullable().optional(),
   /** El lugar cuenta, la persona no se dice. */
   hidden: z.boolean().optional(),
 });

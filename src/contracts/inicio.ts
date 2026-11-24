@@ -40,6 +40,11 @@ export const RenglonDelInicio = z.object({
   detail: z.array(z.string()),
   /** Hasta cuándo: el vencimiento más próximo. */
   until: Instante.nullable(),
+  /**
+   * De `detail`, lo que ya no depende de quien mira sino de otra persona (3.12): en `texts`, el
+   * aviso de privacidad que la gerencia ya pidió publicar y espera la firma de la dueña (D-25).
+   */
+  waiting: z.array(z.string()).optional(),
 });
 export type RenglonDelInicio = z.infer<typeof RenglonDelInicio>;
 

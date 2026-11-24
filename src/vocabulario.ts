@@ -356,6 +356,8 @@ export const MOVIMIENTO_DE_CAJA: Readonly<Record<string, string>> = movimientos;
 export const ORIGEN_DEL_COBRO: Readonly<Record<string, string>> = {
   BILLING: 'Membresías y cargos',
   POS: 'Venta de productos',
+  // Bloque 3.5 (D-13): lo devuelto de ventas de otro día, que sale del turno abierto.
+  POS_RETURNS: 'Devoluciones de tienda',
 };
 
 // ── Puestos ─────────────────────────────────────────────────────────────────

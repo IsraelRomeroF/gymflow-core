@@ -64,6 +64,12 @@ export const PERMISSIONS = [
   p('members:health:read', 'Ver la nota de salud del socio'),
   p('members:balance:adjust', 'Ajustar manualmente el saldo de un socio', { reason: true }),
   p('members:consent:read', 'Ver los consentimientos de un socio'),
+  // D-29 (fase 3, bloque 3.8). Recepción elige el coach AL ALTA (`members:create`); después lo
+  // cambia solo la gerencia. Reasignar socios entre coaches es reasignar clientes.
+  p('members:coach:assign', 'Poner o cambiar el coach de un socio'),
+  // «Hacerme su coach»: el coach se suma a un socio SIN coach con el código que el socio le
+  // dicta en persona. No abre el padrón: sin código no hay socio.
+  p('members:coach:claim', 'Hacerse coach de un socio sin coach, con el código que el socio le dicta'),
   // Registrar lo que el socio pide en el mostrador (21-04): atender, no modificar.
   // Resolver la solicitud sigue siendo de quien edita la ficha (`members:update`).
   p('members:privacy:request', 'Registrar una solicitud de privacidad (ARCO) del socio'),
@@ -118,7 +124,9 @@ export const PERMISSIONS = [
   p('billing:charge:manual', 'Crear un cargo fuera del catálogo (importe a mano)', { reason: true }),
   p('billing:charge:void', 'Anular un cargo', { reason: true, approval: true }),
   p('billing:discount:apply', 'Aplicar un descuento', { reason: true }),
-  p('billing:waiver:apply', 'Condonar deuda', { reason: true, approval: true }),
+  // D-12 (bloque 3.5): ya no pide firma SIEMPRE. La gerencia perdona sola hasta una mensualidad
+  // del socio; arriba de eso, `can()` exige la firma de la dueña (`waiverAllowanceCents`).
+  p('billing:waiver:apply', 'Condonar deuda', { reason: true }),
 
   // ── payments ──────────────────────────────────────────────────────────────
   p('payments:record', 'Registrar un pago'),
@@ -134,12 +142,21 @@ export const PERMISSIONS = [
   p('cash:session:open', 'Abrir caja'),
   p('cash:session:close', 'Cerrar caja'),
   p('cash:session:read', 'Ver cortes de caja'),
-  p('cash:withdraw', 'Retirar efectivo de la caja', { reason: true }),
+  // D-15 (bloque 3.5). Retirar a la caja fuerte o depositar: siempre con la firma de la dueña
+  // (lo decide la ruta con `reglaDelCajon`); recepción, además, hasta su tope por turno.
+  p('cash:withdraw', 'Retirar efectivo de la caja o depositarlo', { reason: true }),
+  // Fondo y gasto chico del cajón: con motivo y sin firma hasta el tope del gimnasio ($500).
+  p('cash:petty:record', 'Anotar fondo y gasto chico del cajón', { reason: true }),
+  // Los topes del cajón los cambia la gerencia SOLO con la firma de la dueña: son los que la limitan.
+  p('cash:limits:set', 'Ajustar los topes del cajón', { reason: true, approval: true }),
   p('cash:variance:approve', 'Aprobar un descuadre de caja', { reason: true }),
 
   // ── pos ───────────────────────────────────────────────────────────────────
   p('pos:sale:create', 'Vender en el punto de venta'),
   p('pos:sale:void', 'Anular una venta', { reason: true }),
+  // D-13 (bloque 3.5). La venta de OTRO día no se anula: se devuelve, con la firma de la dueña,
+  // y el producto vuelve al inventario. Recepción no la tiene: marca la venta «por corregir».
+  p('pos:sale:return', 'Registrar la devolución de una venta de otro día', { reason: true, approval: true }),
   p('pos:product:manage', 'Gestionar el catálogo de productos'),
   p('pos:inventory:adjust', 'Ajustar inventario', { reason: true }),
 
@@ -158,6 +175,12 @@ export const PERMISSIONS = [
   // ── classes / training ────────────────────────────────────────────────────
   p('classes:read', 'Ver clases, horarios y listas de asistencia'),
   p('classes:manage', 'Gestionar clases y horarios'),
+  // D-28 (fase 3, bloque 3.8). El coach OPERA sus clases: pone suplente y cambia el cupo de la
+  // sesión que imparte, sin armar el horario (`classes:manage` se le da por persona).
+  p('classes:session:operate', 'Operar sus clases: poner suplente y cambiar el cupo de la sesión que imparte'),
+  // Y nadie fuera de la gerencia cancela: ni una sesión, ni un horario, ni una clase, ni una
+  // pausa por fechas (todo lo que le quita su lugar a quien reservó). No se le enciende a nadie.
+  p('classes:session:cancel', 'Cancelar clases: una sesión, un horario, una clase o una pausa por fechas', { reason: true }),
   p('classes:book_for_member', 'Reservar a nombre de un socio'),
   p('classes:booking:override', 'Cancelar una reserva fuera de la ventana', { reason: true }),
   p('training:template:manage', 'Gestionar plantillas de rutina'),
@@ -192,6 +215,10 @@ export const PERMISSIONS = [
   // descuentos sobre tope) SIN poder hacerlo uno mismo. Lo tiene el dueño:
   // firma desde su teléfono y sigue sin operar (decisión del 2026-10-05).
   p('approvals:grant', 'Dar la segunda firma a lo que pide el personal'),
+  // D-02 (bloque 3.1): NO es de ningún puesto. La sesión lo trae solo mientras
+  // la persona tiene un nombramiento de apoderado vigente; con él ve
+  // Autorizaciones. Quién firma lo decide `ApprovalService.requireAuthority`.
+  p('approvals:proxy', 'Dar la segunda firma como apoderado temporal del dueño (lo da un nombramiento, no un puesto)'),
   p('platform:organizations:manage', 'Dar de alta y administrar marcas de gimnasio en la plataforma', { reason: true }),
 ] as const satisfies readonly PermissionDef[];
 

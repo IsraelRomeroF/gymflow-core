@@ -66,6 +66,9 @@ const MOSTRADOR = K(
   'billing:statement:read', 'billing:charge:create',
   'payments:record',
   'cash:session:open', 'cash:session:close', 'cash:session:read',
+  // D-15 (bloque 3.5): anota fondo y gasto chico sin firma hasta el tope del gimnasio, y retira
+  // o deposita con la firma de la dueña hasta su tope por turno.
+  'cash:petty:record', 'cash:withdraw',
   'pos:sale:create',
   'access:monitor', 'access:manual_grant', 'access:credential:manage',
   'access:biometric:enroll', 'access:attendance:read',
@@ -130,7 +133,7 @@ export const ROLES: readonly RoleDef[] = [
     key: 'MANAGER', name: 'Gerente', description: 'Opera y configura todo el gimnasio, en todas sus sucursales, y da de alta al personal. Lo que exige segunda firma lo aprueba el dueño.',
     sees: 'Todo el panel, de todas las sucursales.', scope: 'org', assignable: true,
     // Todo menos la segunda firma: nadie aprueba lo suyo ni lo de su par (2026-10-05).
-    permissions: K(...PERMISSIONS.map((perm) => perm.key).filter((key) => key !== 'approvals:grant' && key !== 'staff:unlock' && key !== 'staff:rescue' && !key.startsWith('platform:'))),
+    permissions: K(...PERMISSIONS.map((perm) => perm.key).filter((key) => key !== 'approvals:grant' && key !== 'approvals:proxy' && key !== 'staff:unlock' && key !== 'staff:rescue' && !key.startsWith('platform:'))),
     limits: { ...SIN_TOPE, maxDiscountPercent: 30, maxManualAccessGrantsPerShift: 25, maxPosVoidsPerShift: 10 },
   },
   /**
@@ -155,7 +158,11 @@ export const ROLES: readonly RoleDef[] = [
     permissions: K(
       'catalog:read',
       'members:read', 'members:health:read',
-      'classes:read', 'classes:manage', 'classes:book_for_member',
+      // D-29: se suma a un socio sin coach con el código que el socio le dicta.
+      'members:coach:claim',
+      // D-28: opera SUS clases (lista, inscribir a sus socios, suplente y cupo). No arma el
+      // horario (`classes:manage` se le da por persona) y no cancela ninguna clase.
+      'classes:read', 'classes:session:operate', 'classes:book_for_member',
       'training:template:manage', 'training:assign', ),
     limits: SIN_DINERO,
   },

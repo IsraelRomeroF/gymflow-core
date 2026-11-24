@@ -195,6 +195,8 @@ describe('cada contrato acepta una respuesta real de su ruta', () => {
       canEnter: true, accessReason: null, accessBranchName: 'Centro', accessUsesVisit: false,
       visitPack: { status: 'ACTIVE', visitsLeft: 3, visitsPurchased: 10, expiresOn: '2026-12-02' }, dayPass: null, planEnded: null,
       features: { classes: true, routines: false, onlinePayments: false },
+      // 3.10: su pase de prueba de hoy y la regla del rostro (D-06, D-08).
+      trialPass: null, faceRule: true, faceMissing: false,
     }],
     ['GET /prospects', ProspectList, {
       items: [{
@@ -335,14 +337,14 @@ function pulse() {
     },
     month: {
       from: '2026-11-01', to: '2026-11-19', profitCents: '545000', incomeCents: '1250000', expensesCents: '-435000', cashOverageCents: '0',
-      fixedExpensesCents: '-400000', lastMonthSameDayProfitCents: '500000', lastMonthTotalProfitCents: '800000', newMembers: 14, leftMembers: 3,
+      fixedExpensesCents: '-400000', lastMonthSameDayProfitCents: '500000', lastMonthTotalProfitCents: '800000', newMembers: 14, leftMembers: 3, trialPasses: 2,
     },
     alerts: {
       shortCounts: [{ id: ID(6), branchId: ID(2), registerName: 'Caja 1', closedByName: 'Recepción Centro', varianceCents: '-1000', reason: 'Cambio de más', closedAt: AHORA }],
       refundsToday: { count: 0, cents: '0' },
       cashOpenSinceYesterday: [],
       pendingApprovals: { count: 1, oldest: AHORA },
-      sensitiveToday: 0,
+      sensitiveToday: 0, entriesWithoutFace7d: 0,
     },
     owed: { overdueCents: '65000', outstandingCents: '130000', membersBehind: 2, byBranch: [{ branchId: ID(2), outstandingCents: '130000', membersBehind: 2 }] },
     members: { active: 246, base: 248 },

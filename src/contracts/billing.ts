@@ -268,6 +268,15 @@ export const Membership = z.object({
   billingAnchorDay: z.number().int(),
   graceUntil: Fecha.nullable(),
   autoRenew: z.boolean(),
+  /**
+   * Lo que paga por periodo (bloque 3.5, heredado de 3.6): el pactado o, sin él, el del plan en
+   * su sede. Solo en el historial del socio y en `GET /memberships/:id`.
+   */
+  periodPriceCents: Centavos.optional(),
+  /** «Conserva su precio» (D-19): un cambio de precio del plan no la toca. */
+  priceProtected: z.boolean().optional(),
+  /** Por qué lo conserva, si alguien lo anotó. */
+  priceProtectedReason: z.string().nullable().optional(),
   frozenDaysUsedThisYear: z.number().int(),
   frozenSince: Fecha.nullable(),
   frozenUntil: Fecha.nullable(),
