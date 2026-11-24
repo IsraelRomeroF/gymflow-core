@@ -198,4 +198,16 @@ describe('bitácora en palabras (DP-05)', () => {
       expect(auditCategoryOf(a), a).toBe('plataforma');
     }
   });
+  it('la operación registrada con la firma de un apoderado lo dice (D-02; 3.16)', () => {
+    const retiro = { action: 'cash.movement.create', afterState: { amountCents: '20000', approvedAsProxy: true, approvedProxyOfName: 'Dana Dueña' } };
+    expect(auditPhrase(retiro)).toBe(`${auditPhrase({ action: retiro.action, afterState: { amountCents: '20000' } })} · se autorizó como apoderado de Dana Dueña`);
+    // También en las frases que se arman aparte (el cierre de mes), y sin nombre no se inventa uno.
+    expect(auditPhrase({ action: 'report.month.close', afterState: { month: '2026-10', approvedAsProxy: true, approvedProxyOfName: 'Dana Dueña' } }))
+      .toBe('cerró el mes de octubre de 2026 · se autorizó como apoderado de Dana Dueña');
+    expect(auditPhrase({ action: 'report.month.close', afterState: { month: '2026-10', approvedAsProxy: true } })).toBe('cerró el mes de octubre de 2026 · se autorizó como apoderado');
+    // Firmada por el dueño: nada. Y el asiento de la firma conserva su propia frase, sin repetirla.
+    expect(auditPhrase({ action: 'report.month.close', afterState: { month: '2026-10' } })).toBe('cerró el mes de octubre de 2026');
+    expect(auditPhrase({ action: 'approval.local.issue', afterState: { asProxy: true, proxyOfName: 'Dana Dueña', approvedAsProxy: true, approvedProxyOfName: 'Dana Dueña' } }))
+      .toBe('obtuvo una firma en el mostrador · firmó como apoderado de Dana Dueña');
+  });
 });

@@ -20,11 +20,14 @@ import { Centavos, Id, Instante } from './comun.js';
  *  - `texts`       textos obligatorios sin publicar (`detail`: cuáles);
  *  - `classes`     clases de hoy que faltan y no tienen coach;
  *  - `intakes`     altas digitales por revisar;
+ *  - `coachless`   socios dados de alta en los últimos 7 días que siguen sin coach (D-29; bloque 3.16): solo
+ *                   para quien puede ponérselo y si el gimnasio tiene algún coach activo; `detail` trae hasta
+ *                   cuatro nombres;
  *  - `prospects`   interesados nuevos a los que nadie ha contactado;
  *  - `retention`   socios en riesgo (la cifra de Retención).
  */
 export const ASUNTOS_DEL_INICIO = [
-  'signatures', 'door', 'registers', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'prospects', 'retention',
+  'signatures', 'door', 'registers', 'biometrics', 'debts', 'texts', 'classes', 'intakes', 'coachless', 'prospects', 'retention',
 ] as const;
 export const AsuntoDelInicio = z.enum(ASUNTOS_DEL_INICIO);
 export type AsuntoDelInicio = z.infer<typeof AsuntoDelInicio>;

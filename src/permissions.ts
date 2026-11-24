@@ -98,11 +98,9 @@ export const PERMISSIONS = [
 
   // ── memberships ───────────────────────────────────────────────────────────
   p('memberships:create', 'Crear una membresía'),
-  /// Activar, renovar o cambiar de plan SIN pasar por el cobro. Existe para
-  /// corregir a mano lo que el flujo normal no cubre; por eso es solo de la
-  /// gerencia (el dueño no opera) y deja motivo. El mostrador vende, renueva y
-  /// cambia de plan por billing, que cobra.
-  p('memberships:override', 'Mover una membresía sin cobrarla (corrección manual)', { reason: true }),
+  // `memberships:override` («mover una membresía sin cobrarla») se retiró del
+  // catálogo en el bloque 3.16: sus cinco rutas se quitaron con D-12 (bloque 3.5)
+  // y ya nada lo pedía. `pnpm seed` lo borra de la base con sus concesiones.
   p('memberships:change_plan', 'Cambiar el plan de una membresía', { reason: true }),
   p('memberships:freeze', 'Congelar o pausar una membresía', { reason: true }),
   p('memberships:cancel', 'Cancelar una membresía', { reason: true }),

@@ -509,6 +509,15 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', '
  * vuelve a componerla.
  */
 export function auditPhrase(e: AuditEntryData, nombres: { member?: string | null | undefined; person?: string | null | undefined } = {}): string {
+  // La OPERACIÓN que se registró con la firma de un apoderado lo dice (D-02; bloque 3.16): el dato viaja
+  // en el asiento (`approvedAsProxy`, `approvedProxyOfName`). El asiento de la firma misma lo dice abajo.
+  const de = campo(e.afterState, 'approvedProxyOfName');
+  const conApoderado = !e.action.startsWith('approval.') && campo(e.afterState, 'approvedAsProxy') === true
+    ? ` · se autorizó como apoderado${typeof de === 'string' && de.trim() ? ` de ${de.trim()}` : ''}` : '';
+  return `${fraseDelAsiento(e, nombres)}${conApoderado}`;
+}
+
+function fraseDelAsiento(e: AuditEntryData, nombres: { member?: string | null | undefined; person?: string | null | undefined }): string {
   const importe = auditAmountCents(e);
   const datos: AuditPhraseData = { amount: importe === null ? null : pesos(importe), member: nombres.member, person: nombres.person };
   const texto = (k: string): string | null => { const v = campo(e.afterState, k); return typeof v === 'string' && v.trim() ? v.trim() : null; };
