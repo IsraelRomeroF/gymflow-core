@@ -18,9 +18,18 @@ export type DatosDelGimnasio = {
   readonly sucursales: readonly string[];
   /** Meses que se guardan los datos tras la baja (Conservación); sin plazo fijado queda un corchete. */
   readonly mesesDeConservacion?: number | null;
+  /**
+   * El plazo de baja del gimnasio (D-18, `churnDays`): días de terminada la
+   * membresía sin renovar para contar como baja. Sin él, el de fábrica (30).
+   * El aviso lo dice porque desde P-01 (bloque 4.18) la conservación cuenta
+   * también esa baja, no solo la de recepción.
+   */
+  readonly diasDeBaja?: number | null;
 };
 
 const lista = (xs: readonly string[]) => (xs.length === 0 ? '[SUCURSALES]' : xs.join(', '));
+/** El plazo de baja que dice el aviso: el del gimnasio, o el de fábrica (D-18: 30 días). */
+const diasDeBaja = (g: DatosDelGimnasio): number => (typeof g.diasDeBaja === 'number' && Number.isInteger(g.diasDeBaja) && g.diasDeBaja > 0 ? g.diasDeBaja : 30);
 
 export function modeloDeTexto(tipo: string, g: DatosDelGimnasio): { titulo: string; texto: string } | null {
   switch (tipo) {
@@ -45,7 +54,7 @@ Tus derechos (ARCO)
 Puedes pedir acceso, rectificación, cancelación u oposición sobre tus datos, o revocar tu consentimiento, en recepción, desde tu portal de socio o escribiendo a [CORREO DE PRIVACIDAD]. Desde tu portal de socio puedes descargar tus datos, retirar permisos y pedir correcciones. Te responderemos en un plazo máximo de 20 días hábiles y, si procede, lo haremos efectivo en los 15 días hábiles siguientes.
 
 ¿Cuánto tiempo guardamos tus datos?
-Mientras seas socio. Después de tu baja los conservamos ${g.mesesDeConservacion ? `${g.mesesDeConservacion} meses` : '[MESES DE CONSERVACIÓN TRAS LA BAJA]'} y luego se anonimizan; lo contable se conserva el tiempo que exige la ley fiscal. Si registraste tu rostro, deja de usarse el día de tu baja y su plantilla se borra a los 30 días si no regresas. Si el gimnasio deja de usar el reconocimiento de rostro, las plantillas dejan de usarse ese día y se borran a los 30 días si no lo retoma.
+Mientras seas socio. Después de tu baja los conservamos ${g.mesesDeConservacion ? `${g.mesesDeConservacion} meses` : '[MESES DE CONSERVACIÓN TRAS LA BAJA]'} y luego se anonimizan; lo contable se conserva el tiempo que exige la ley fiscal. Para esto, tu baja es el día en que te damos de baja en recepción o cancelas tu membresía, o ${diasDeBaja(g)} días después de que tu membresía termine sin que la renueves; si sigues viniendo sin membresía (visitas sueltas, un paquete o clases), se cuenta ${diasDeBaja(g)} días después de tu última visita, y mientras tengas un paquete vigente no cuenta. Si registraste tu rostro, su plantilla se borra a los 30 días de tu baja si no regresas; si te damos de baja en recepción, además deja de usarse ese mismo día. Si el gimnasio deja de usar el reconocimiento de rostro, las plantillas dejan de usarse ese día y se borran a los 30 días si no lo retoma.
 
 Cambios a este aviso
 Cualquier cambio te lo daremos a conocer en recepción y en tu portal de socio.
@@ -84,7 +93,7 @@ Autorizo a ${g.razonSocial} ("${g.nombreComercial}") a registrar mi rostro con e
 - Mi rostro se registra con la cámara de recepción. La foto no se guarda: solo una plantilla, que es una serie de números que sirve para reconocerme. La plantilla se guarda cifrada en el servidor del gimnasio, ligada a este consentimiento, y no se comparte con terceros.
 - Se usa únicamente en la Estación de acceso de esa sucursal: me paro frente a la cámara, hago el movimiento que me pide y, si me reconoce, la entrada se decide igual que en recepción (membresía, horario y pagos).
 - Es opcional: si no la autorizo, entro por recepción sin ningún costo. Si el gimnasio exige el rostro para entrar, cada una de mis visitas la autoriza la gerencia en recepción.
-- Puedo revocar este consentimiento cuando quiera en recepción; la plantilla se borra en el acto y queda constancia del borrado. Si dejo de ser socio, mi rostro deja de reconocerse. Si el gimnasio deja de usar el reconocimiento de rostro, la plantilla se borra a los 30 días si no lo retoma.
+- Puedo revocar este consentimiento cuando quiera en recepción; la plantilla se borra en el acto y queda constancia del borrado. Si me dan de baja en recepción, mi rostro deja de reconocerse ese día; y en cualquier caso la plantilla se borra a los 30 días de mi baja (como la define el Aviso de privacidad) si no regreso. Si el gimnasio deja de usar el reconocimiento de rostro, la plantilla se borra a los 30 días si no lo retoma.
 
 Este consentimiento es adicional al Aviso de privacidad, que conozco.`,
       };

@@ -234,7 +234,8 @@ describe('conservación (D-32): los plazos del rostro y de la lista mensual', ()
   it('el aviso modelo dice el plazo y lo del rostro', () => {
     const modelo = modeloDeTexto('PRIVACY_NOTICE', { razonSocial: 'Gimnasios del Centro, S.A. de C.V.', nombreComercial: 'Gimnasio Centro', sucursales: ['Centro'], mesesDeConservacion: 24 })!;
     expect(modelo.texto).toContain('los conservamos 24 meses');
-    expect(modelo.texto).toContain('su plantilla se borra a los 30 días si no regresas');
+    // Desde P-01 (4.18): la baja incluye la calculada; el rostro se borra a los 30 días de ella.
+    expect(modelo.texto).toContain('su plantilla se borra a los 30 días de tu baja si no regresas');
   });
 
   it('los contratos de la lista y de la pantalla', () => {
@@ -242,10 +243,11 @@ describe('conservación (D-32): los plazos del rostro y de la lista mensual', ()
       id: '019a1b2c-3d4e-7f50-8a9b-0c1d2e4f2a9c', period: '2026-11', status: 'PENDING', monthsAfterArchive: 24, cutoffOn: '2024-11-23',
       preparedAt: '2026-11-23T08:00:00.000Z', signedAt: null, signedByName: null, counts: { listed: 1, anonymized: 0, excluded: 0, skipped: 0 },
     };
-    const renglon = { memberId: '019a1b2c-3d4e-7f50-8a9b-0c1d2e4f2a9d', memberCode: 'CEN-000123', fullName: 'Ana Ruiz', homeBranchId: null, archivedOn: '2024-10-02', status: 'LISTED', note: null };
+    const renglon = { memberId: '019a1b2c-3d4e-7f50-8a9b-0c1d2e4f2a9d', memberCode: 'CEN-000123', fullName: 'Ana Ruiz', homeBranchId: null, archivedOn: '2024-10-02', cause: 'ARCHIVED', status: 'LISTED', note: null };
     expect(diferenciasConElContrato(PrivacyBatch, { ...lista, items: [renglon] })).toEqual([]);
     expect(diferenciasConElContrato(PrivacyConservation, {
-      monthsAfterArchive: 24, monthsIsDefault: true, faceDaysAfterArchive: 30, startedOn: '2026-11-23', faces: { waiting: 2, nextDeletionOn: '2026-12-23' },
+      monthsAfterArchive: 24, monthsIsDefault: true, faceDaysAfterArchive: 30, startedOn: '2026-11-23', calculatedStartedOn: '2026-11-25', churnDays: 30,
+      faces: { waiting: 2, nextDeletionOn: '2026-12-23', items: [{ memberId: renglon.memberId, memberCode: 'CEN-000123', fullName: null, cause: 'EXPIRED', since: '2026-10-01', deletesOn: '2026-12-25' }] },
       batch: { ...lista, items: [renglon] }, canSign: false, canExclude: true, history: [{ ...lista, status: 'SIGNED', signedAt: '2026-10-03T18:00:00.000Z', signedByName: 'Dueña' }],
     })).toEqual([]);
     expect(diferenciasConElContrato(PrivacySettings, { monthsAfterArchive: null, effectiveMonths: 24 })).toEqual([]);

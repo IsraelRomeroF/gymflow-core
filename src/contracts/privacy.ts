@@ -170,6 +170,13 @@ export const PrivacyBatchItem = z.object({
   homeBranchId: Id.nullable(),
   /** El día de su baja, en su sede. */
   archivedOn: Fecha,
+  /**
+   * P-01 (4.18): de qué baja entró. `ARCHIVED` = lo dieron de baja en su ficha;
+   * `CANCELED` / `EXPIRED` = la baja calculada de D-18 (canceló, o su membresía
+   * terminó y no renovó ni volvió a venir). Al firmar, a esos se les da de baja
+   * en su ficha y se anonimizan en el mismo acto.
+   */
+  cause: z.enum(['ARCHIVED', 'CANCELED', 'EXPIRED']),
   status: z.enum(ESTADOS_DE_RENGLON_DE_CONSERVACION),
   /** El motivo con que se sacó de la lista o por el que no se tocó. */
   note: z.string().nullable(),
@@ -205,8 +212,32 @@ export const PrivacyConservation = z.object({
   faceDaysAfterArchive: z.number().int(),
   /** El día en que los plazos empezaron a correr en este gimnasio; null si el cierre diario aún no pasa. */
   startedOn: Fecha.nullable(),
-  /** Rostros de exsocios que siguen guardados (sin reconocerse) y cuándo se borra el próximo. */
-  faces: z.object({ waiting: z.number().int(), nextDeletionOn: Fecha.nullable() }),
+  /**
+   * P-01 (4.18): el día en que la baja calculada (canceló, o terminó sin
+   * renovar) empezó a contar en este gimnasio; null si el cierre aún no pasa.
+   * A quien ya era baja calculada ese día, los 30 días del rostro le cuentan desde ahí.
+   */
+  calculatedStartedOn: Fecha.nullable(),
+  /** El plazo de baja del gimnasio (D-18): días de terminada sin renovar, y lo que protege una visita. */
+  churnDays: z.number().int(),
+  /**
+   * Rostros de exsocios que siguen guardados y cuándo se borra el próximo.
+   * Desde 4.18 cuentan también los de la baja calculada (esos se siguen
+   * reconociendo hasta borrarse; la puerta les niega la entrada por no tener plan).
+   */
+  faces: z.object({
+    waiting: z.number().int(),
+    nextDeletionOn: Fecha.nullable(),
+    /** A quién se le borra y cuándo, del más próximo al más lejano (hasta 200). `fullName` solo para la gerencia. */
+    items: z.array(z.object({
+      memberId: Id, memberCode: z.string(), fullName: z.string().nullable(),
+      cause: z.enum(['ARCHIVED', 'CANCELED', 'EXPIRED']),
+      /** Desde qué día cuenta su baja para la conservación. */
+      since: Fecha,
+      /** Null mientras el cierre no fije el arranque. */
+      deletesOn: Fecha.nullable(),
+    })),
+  }),
   /** La lista que espera firma, con sus renglones; null si no hay. */
   batch: PrivacyBatch.nullable(),
   /** ¿Quien pregunta puede firmarla? */
@@ -217,6 +248,36 @@ export const PrivacyConservation = z.object({
   history: z.array(PrivacyBatchSummary),
 });
 export type PrivacyConservation = z.infer<typeof PrivacyConservation>;
+
+/**
+ * `GET /members/:id/conservation` (P-01; bloque 4.18): lo que la conservación
+ * hace con ESTE socio. La baja para la conservación puede no ser la de D-18
+ * que dice la ficha («De baja desde el…»): quien sigue viniendo sin membresía
+ * no cuenta. `baja` null = no es baja ni para D-18 (o ya está anonimizado).
+ */
+export const MemberConservation = z.object({
+  memberId: Id,
+  /** Hoy en su sede. */
+  asOf: Fecha,
+  baja: z.object({
+    cause: z.enum(['ARCHIVED', 'CANCELED', 'EXPIRED']),
+    /** ¿Cuenta ya como baja para borrar su rostro y para la lista? */
+    counts: z.boolean(),
+    /** Desde qué día cuenta (si `counts`). */
+    since: Fecha.nullable(),
+    /** Por qué todavía no cuenta (si no `counts`). */
+    exception: z.enum(['ENTRADA_RECIENTE', 'PAQUETE_VIVO']).nullable(),
+    /** Con una visita reciente: desde qué día contará si no vuelve. */
+    countsFrom: Fecha.nullable(),
+    /** El último día con una entrada registrada. */
+    lastEntryOn: Fecha.nullable(),
+  }).nullable(),
+  /** ¿Tiene un rostro guardado? Si su baja cuenta, el día en que se borra (null mientras el cierre no fije el arranque). */
+  face: z.object({ stored: z.boolean(), deletesOn: Fecha.nullable() }),
+  /** Si su baja cuenta: desde qué día entra a la lista mensual por anonimizar (que siempre firma la dueña). */
+  listFrom: Fecha.nullable(),
+});
+export type MemberConservation = z.infer<typeof MemberConservation>;
 
 /** `POST /privacy/conservation/sign`: la lista firmada y lo que se hizo con cada renglón. */
 export const PrivacyBatchSigned = z.object({ batch: PrivacyBatch });

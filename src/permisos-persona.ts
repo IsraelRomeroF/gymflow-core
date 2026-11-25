@@ -6,7 +6,8 @@ import type { Grant } from './authorize.js';
  * El puesto da los permisos de base. Encima, quien administra al personal
  * (la gerencia, o el dueño mientras no haya gerente) enciende o apaga acciones
  * sueltas a una persona de recepción o a un coach: "esta recepcionista sí
- * cancela ventas", "este coach no reserva por el socio".
+ * da descuentos", "este coach no reserva por el socio". (Anular ventas ya no:
+ * P-09, bloque 4.19.)
  *
  * Solo se ajusta lo de esta lista, cerrada a propósito: nunca el personal, la
  * segunda firma, la bitácora, la configuración ni la plataforma. Lo que pide
@@ -23,12 +24,14 @@ export type GrupoAjustable = { name: string; permissions: readonly string[] };
 
 export const ADJUSTABLE_BY_ROLE: Readonly<Record<'RECEPTION' | 'COACH', readonly GrupoAjustable[]>> = {
   RECEPTION: [
-    { name: 'Socios', permissions: ['members:create', 'members:update', 'members:portal:invite', 'members:message:send', 'members:intake:review', 'members:health:read', 'access:biometric:enroll'] },
+    // `members:health:read` ya NO (P-10, bloque 4.19): recepción nunca lee ni teclea la nota de salud.
+    { name: 'Socios', permissions: ['members:create', 'members:update', 'members:portal:invite', 'members:message:send', 'members:intake:review', 'access:biometric:enroll'] },
     { name: 'Membresías', permissions: ['memberships:create', 'memberships:visitpack:manage', 'memberships:freeze', 'memberships:change_plan'] },
     { name: 'Cobro', permissions: ['payments:record', 'billing:charge:create', 'billing:discount:apply'] },
     // `cash:petty:record` y `cash:withdraw` vienen con el puesto desde D-15 (bloque 3.5); aquí se le quitan a quien no deba.
     { name: 'Caja', permissions: ['cash:session:open', 'cash:session:close', 'cash:petty:record', 'cash:withdraw'] },
-    { name: 'Punto de venta', permissions: ['pos:sale:create', 'pos:sale:void'] },
+    // `pos:sale:void` ya NO (P-09, bloque 4.19): anular una venta, o descartar su marca «por corregir», es de la gerencia.
+    { name: 'Punto de venta', permissions: ['pos:sale:create'] },
     { name: 'Acceso', permissions: ['access:monitor', 'access:manual_grant', 'access:credential:manage'] },
     // `classes:session:operate` (D-28): suplente y cupo. A quien recepción arma el horario se le
     // enciende junto con `classes:manage`. Cancelar (`classes:session:cancel`) no está en ninguna lista.
@@ -43,8 +46,33 @@ export const ADJUSTABLE_BY_ROLE: Readonly<Record<'RECEPTION' | 'COACH', readonly
   ],
 };
 
-/** Todos los grupos que se ajustan a alguien (la lista de recepción los contiene todos). */
-export const ADJUSTABLE_PERMISSION_GROUPS: readonly GrupoAjustable[] = ADJUSTABLE_BY_ROLE.RECEPTION;
+/**
+ * Todos los grupos que se ajustan a alguien, juntos por nombre y en el orden
+ * de recepción. Desde P-10 (bloque 4.19) la lista de recepción ya no las
+ * contiene todas: «ver la nota de salud» solo se le ajusta al coach.
+ */
+export const ADJUSTABLE_PERMISSION_GROUPS: readonly GrupoAjustable[] = (() => {
+  const grupos = new Map<string, string[]>();
+  for (const g of Object.values(ADJUSTABLE_BY_ROLE).flat()) {
+    const ya = grupos.get(g.name) ?? [];
+    grupos.set(g.name, [...ya, ...g.permissions.filter((k) => !ya.includes(k))]);
+  }
+  return [...grupos].map(([name, permissions]) => ({ name, permissions }));
+})();
+
+/**
+ * LO QUE NUNCA SE LE ENCIENDE A ESE PUESTO, Y POR QUÉ (bloque 4.19, respuestas
+ * de Israel del 2026-11-25). No cambia ninguna regla: la regla es que no está
+ * en `ADJUSTABLE_BY_ROLE`. Esto es la frase que la pantalla de Personal pone
+ * donde antes ofrecía el interruptor, para que quien administra no lo busque.
+ */
+export const NEVER_ADJUSTABLE_BY_ROLE: Readonly<Record<'RECEPTION' | 'COACH', ReadonlyArray<{ permission: string; why: string }>>> = {
+  RECEPTION: [
+    { permission: 'pos:sale:void', why: 'Anular una venta de la tienda, o descartar su marca «por corregir», es de la gerencia. Recepción la marca «por corregir» y la gerencia decide.' },
+    { permission: 'members:health:read', why: 'La nota de salud es un dato sensible: solo la leen la gerencia y el coach del socio. El alta de un menor cuyo tutor deja una nota la aprueba la gerencia.' },
+  ],
+  COACH: [],
+};
 
 export const ADJUSTABLE_PERMISSIONS: ReadonlySet<string> = new Set(Object.values(ADJUSTABLE_BY_ROLE).flatMap((gs) => gs.flatMap((g) => g.permissions)));
 

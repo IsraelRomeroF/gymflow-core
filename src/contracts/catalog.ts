@@ -58,8 +58,18 @@ export const PlanPriceChangePreview = z.object({
   protectedDeltaCents: Centavos,
   /** Vendidas en sucursales con precio propio: este cambio no las toca. */
   atOwnPriceBranches: z.number().int(),
-  /** El primer día en que alguien de las tocadas paga el precio nuevo (el fin del periodo más próximo); `null` si no hay. */
+  /**
+   * El primer día en que alguien de las tocadas paga el precio nuevo; `null` si no hay. Desde el bloque
+   * 4.20 (P-14) un aumento respeta el mínimo de 15 días: es el primer inicio de periodo de cada socio
+   * desde `appliesFrom`, el más próximo de todos.
+   */
   firstPaymentOn: Fecha.nullable(),
+  /** Desde qué día rige (4.20, P-14): un aumento, 15 días después de hoy; una bajada, hoy. Opcional por compatibilidad. */
+  appliesFrom: Fecha.optional(),
+  /** Los días mínimos de aviso que respeta este cambio: 15 si sube, 0 si baja. */
+  noticeDays: z.number().int().optional(),
+  /** De las tocadas, las que tienen un cobro antes de `appliesFrom`: ese lo pagan al precio de antes y el aumento llega en el siguiente. */
+  touchedBeforeNotice: z.number().int().optional(),
   /** De las tocadas, las que no tienen celular: no se les puede avisar por WhatsApp. */
   touchedWithoutPhone: z.number().int(),
 });

@@ -188,6 +188,29 @@ export const ASSIGNABLE_ROLES: readonly RoleDef[] = ROLES.filter((r) => r.assign
 export const ROLE_PERMISSIONS: Readonly<Record<RoleKey, readonly PermissionKey[]>> =
   Object.fromEntries(ROLES.map((r) => [r.key, r.permissions])) as Record<RoleKey, readonly PermissionKey[]>;
 
+/**
+ * LA DUEÑA SIN GERENTE. Mientras el gimnasio no tenga un gerente que
+ * administre (activo y con Personal liberado, D17-05), la sesión de la dueña
+ * recibe además esto, en todo el gimnasio (`identity/session.repository.ts`).
+ * Con gerente, nada. El apoderado nunca: no es la dueña.
+ *
+ *  · Dar de alta y ajustar al personal (2026-10-09) y cerrar el mes con su
+ *    contraseña (D-23, bloque 3.7).
+ *  · P-02 (respuesta de Israel del 2026-11-25, bloque 4.19): cancelar una
+ *    clase, cambiarle el coach a un socio, cerrar la revisión de un descuadre
+ *    de caja y ajustar los plazos de retención y de la deuda (estos, con su
+ *    contraseña: nadie se firma a sí mismo). Y lo mínimo para llegar a esas
+ *    pantallas: ver las clases y buscar al socio (solo leer; lo demás de la
+ *    ficha sigue pidiendo su propio permiso, y la nota de salud no la trae).
+ */
+export const OWNER_WITHOUT_MANAGER: readonly PermissionKey[] = K(
+  'staff:manage', 'reports:month:close',
+  'classes:read', 'classes:session:cancel',
+  'members:read', 'members:coach:assign',
+  'cash:variance:approve',
+  'retention:terms:set', 'billing:debt-terms:set',
+);
+
 export function isRoleKey(key: string): key is RoleKey {
   return ROLE_BY_KEY.has(key);
 }

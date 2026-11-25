@@ -22,8 +22,8 @@ describe('excepciones por puesto', () => {
       'access:biometric:enroll', 'memberships:create']) {
       expect(coach.has(k), k).toBe(false);
     }
-    // A recepción sí se le ajusta lo del mostrador.
-    expect(adjustableFor('RECEPTION').has('pos:sale:void') && adjustableFor('RECEPTION').has('cash:withdraw')).toBe(true);
+    // A recepción sí se le ajusta lo del mostrador (anular ventas ya no: P-09, bloque 4.19).
+    expect(adjustableFor('RECEPTION').has('pos:sale:create') && adjustableFor('RECEPTION').has('cash:withdraw')).toBe(true);
   });
 
   it('a la gerencia, al dueño y a la plataforma no se les ajusta nada: van completos por su puesto', () => {

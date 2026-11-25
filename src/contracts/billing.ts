@@ -248,6 +248,8 @@ export const PaymentReceipt = z.object({
     planName: z.string().nullable(),
     fromPriceCents: Centavos,
     toPriceCents: Centavos,
+    /** Solo `UPCOMING` (4.20, P-14): el día de su primer pago al precio nuevo, si ya se sabe; `null` = su siguiente pago. */
+    startsOn: Fecha.nullable().optional(),
   }).nullable().optional(),
 });
 export type PaymentReceipt = z.infer<typeof PaymentReceipt>;
@@ -283,6 +285,17 @@ export const Membership = z.object({
   priceProtected: z.boolean().optional(),
   /** Por qué lo conserva, si alguien lo anotó. */
   priceProtectedReason: z.string().nullable().optional(),
+  /**
+   * Un aumento ya guardado que todavía no le llega (4.20, P-14: 15 días de aviso): a cuánto pasa y desde
+   * qué pago. `null` (o ausente) si no hay. Solo donde viene `periodPriceCents`.
+   */
+  pendingPrice: z.object({
+    toPriceCents: Centavos, firstChargeOn: Fecha.nullable(), appliesFrom: Fecha,
+    /** Si renovara hoy, ¿el periodo que sigue ya lo lleva? */
+    inNextPeriod: z.boolean(),
+  }).nullable().optional(),
+  /** El importe (con impuesto) de la cuota del periodo que sigue si se renovara HOY (4.20): con el aumento solo si ya rige para ese periodo. Lo cotiza «Renovar». */
+  nextPeriodPriceCents: Centavos.optional(),
   frozenDaysUsedThisYear: z.number().int(),
   frozenSince: Fecha.nullable(),
   frozenUntil: Fecha.nullable(),

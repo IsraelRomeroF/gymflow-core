@@ -252,6 +252,8 @@ export const PortalReceipt = z.object({
     planName: z.string().nullable(),
     fromPriceCents: Centavos,
     toPriceCents: Centavos,
+    /** Solo `UPCOMING` (4.20, P-14): el día de su primer pago al precio nuevo, si ya se sabe; `null` = su siguiente pago. */
+    startsOn: Fecha.nullable().optional(),
   }).nullable(),
   /**
    * Lo que el recibo imprime del gimnasio, igual que el del mostrador (D-27; bloque 4.11 con los datos de

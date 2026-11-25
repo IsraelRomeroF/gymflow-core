@@ -12,6 +12,7 @@
  * La interfaz no cita artículos (21-25): solo plazos.
  */
 import type { ConsentType } from './intake.js';
+import { sumarDias, type BajaDelSocio, type CausaDeBaja } from './plazos-del-socio.js';
 
 // ── Solicitudes ARCO ─────────────────────────────────────────────────────────
 
@@ -314,6 +315,80 @@ export function rostroSeBorraEl(bajaEl: Date, arranque: Date | null = null): Dat
 /** ¿Ya toca borrar el rostro? `hoy` y `bajaEl` son días de la sede del socio. */
 export function tocaBorrarRostro(bajaEl: Date, hoy: Date, arranque: Date | null = null): boolean {
   return diaUtc(hoy).getTime() >= rostroSeBorraEl(bajaEl, arranque).getTime();
+}
+
+// ── La baja para la conservación (P-01; fase 4, bloque 4.18) ────────────────
+
+/**
+ * QUÉ CUENTA COMO BAJA PARA LA CONSERVACIÓN (P-01, Israel 2026-11-25, «por lo
+ * recomendado»). Antes solo el acto «Dar de baja» de la ficha. Desde 4.18,
+ * también la baja calculada de D-18 (`bajaDelSocio`): canceló su membresía, o
+ * la tiene terminada hace `churnDays` días sin renovar. Con una EXCEPCIÓN:
+ * quien sigue viniendo sin membresía (visita suelta, pase del día, paquete,
+ * clase) no cuenta como baja para borrar su rostro ni para la lista.
+ *
+ * «Reciente» (decisión menor de 4.18, la más conservadora razonable): dentro
+ * del MISMO plazo de baja del gimnasio. Una entrada registrada el día E deja
+ * de proteger el día E + `churnDays`; desde ese día cuenta como baja (y de ahí
+ * corren sus 30 días del rostro). Y mientras tenga un paquete de visitas vivo
+ * (activo o congelado, sin caducar) no cuenta como baja, venga o no; el día en
+ * que caduca su paquete cuenta como su última entrada (lo junta la API).
+ *
+ * Al que dieron de baja en su ficha la excepción no le aplica: ese acto ya
+ * dice que se fue, y sigue como siempre (deja de reconocerse ese día).
+ */
+export type DatosDeBajaParaConservar = {
+  /** La baja de D-18, o null si no lo es. */
+  readonly baja: BajaDelSocio | null;
+  /** El último día (de la sede, `AAAA-MM-DD`) con una entrada registrada, o null. */
+  readonly ultimaEntrada: string | null;
+  /** ¿Tiene hoy un paquete de visitas vivo? */
+  readonly paqueteVivo: boolean;
+  readonly churnDays: number;
+  /** Hoy en la sede, `AAAA-MM-DD`. */
+  readonly today: string;
+};
+
+/** Por qué alguien que para D-18 es baja todavía no cuenta para la conservación. */
+export type ExcepcionDeConservacion = 'ENTRADA_RECIENTE' | 'PAQUETE_VIVO';
+export const EXCEPCION_DE_CONSERVACION: Readonly<Record<ExcepcionDeConservacion, string>> = {
+  ENTRADA_RECIENTE: 'Sigue viniendo sin membresía',
+  PAQUETE_VIVO: 'Tiene un paquete de visitas vivo',
+};
+
+export type BajaParaConservar =
+  | { readonly cuenta: true; readonly cause: CausaDeBaja; readonly since: string }
+  | {
+    readonly cuenta: false; readonly cause: CausaDeBaja; readonly porque: ExcepcionDeConservacion;
+    /** Desde qué día contará como baja si no vuelve a venir (null con un paquete vivo: depende de cuándo se acabe). */
+    readonly contaraDesde: string | null;
+  };
+
+/**
+ * La baja con que se cuentan los 30 días del rostro y los meses de la lista,
+ * o null si no es baja. `since` es el día de la sede desde el que cuenta.
+ */
+export function bajaParaConservar(d: DatosDeBajaParaConservar): BajaParaConservar | null {
+  const b = d.baja;
+  if (!b) return null;
+  if (b.cause === 'ARCHIVED') return { cuenta: true, cause: b.cause, since: b.since };
+  if (d.paqueteVivo) return { cuenta: false, cause: b.cause, porque: 'PAQUETE_VIVO', contaraDesde: null };
+  const trasLaEntrada = d.ultimaEntrada ? sumarDias(d.ultimaEntrada.slice(0, 10), d.churnDays) : null;
+  if (!trasLaEntrada || trasLaEntrada <= b.since) return { cuenta: true, cause: b.cause, since: b.since };
+  if (trasLaEntrada > d.today.slice(0, 10)) return { cuenta: false, cause: b.cause, porque: 'ENTRADA_RECIENTE', contaraDesde: trasLaEntrada };
+  return { cuenta: true, cause: b.cause, since: trasLaEntrada };
+}
+
+/**
+ * El arranque que le toca a cada baja (ARRANQUE SUAVE). La del acto de la
+ * ficha usa el de 3.9 (`privacy_conservation_starts`); la calculada, el día en
+ * que la regla de 4.18 empezó a correr en el gimnasio
+ * (`privacy_calculated_baja_starts`). Así, a quien ya era baja calculada ese
+ * día, los 30 días del rostro le cuentan desde ahí: nadie lo pierde la
+ * primera noche. Sin arranque todavía no se borra nada.
+ */
+export function arranqueDeLaBaja(cause: CausaDeBaja, arranques: { readonly ficha: Date | null; readonly calculada: Date | null }): Date | null {
+  return cause === 'ARCHIVED' ? arranques.ficha : arranques.calculada;
 }
 
 /** El último día de baja que ya cumplió el plazo: quien se dio de baja ese día o antes entra a la lista. */

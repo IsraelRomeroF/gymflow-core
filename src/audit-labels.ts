@@ -54,6 +54,8 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   // Por socio (queda en su historia) y el resumen de la corrida (ese es el que va a «Para revisar»).
   'billing.debt.lost': 'dio por perdida la deuda{m}{de socio}',
   'billing.debt.lost.summary': 'dio deuda por perdida{m}',
+  // P-11 (4.18): la deuda de fichas que ya estaban anonimizadas, de una vez (la de cada ficha nueva se asienta al anonimizarla).
+  'billing.debt.lost.anonymized': 'dio por perdida la deuda de fichas anonimizadas{m}',
   // Bloque 4.3 (D-17): la gerencia revisa y cierra con su nota un corte con más de $20 de diferencia.
   'cash.variance.review': 'revisó el descuadre de un corte{m}',
   'cash.register.create': 'dio de alta una caja',
@@ -130,6 +132,7 @@ export const AUDIT_LABELS: Readonly<Record<string, string>> = {
   'privacy.request.effect': 'hizo efectiva una solicitud ARCO{de socio}',
   // Conservación (D-32; bloque 3.9): la lista mensual de exsocios por anonimizar y su firma.
   'privacy.conservation.start': 'empezó a aplicar los plazos de conservación de datos',
+  'privacy.conservation.calculated.start': 'empezó a contar como baja, para la conservación de datos, a quien canceló o no renovó',
   'privacy.batch.prepare': 'armó la lista mensual de exsocios por anonimizar',
   'privacy.batch.replace': 'cerró sin firma una lista de exsocios por anonimizar',
   'privacy.batch.sign': 'firmó la lista mensual de exsocios por anonimizar',
@@ -364,7 +367,7 @@ export const AUDIT_CATEGORIES: Readonly<Record<string, readonly string[]>> = {
     // Bloque 3.5 (D-12, D-13): todo perdón y toda devolución, con o sin firma, se revisa.
     'billing.debt.waive', 'payments.return', 'payments.credit.return', 'pos.sale.return', 'cash.limits.update',
     // D-18 (4.4): la deuda que sale de «Por cobrar» y quien cambia cuándo sale.
-    'billing.debt.lost.summary', 'billing.debt_terms.update', 'settings.retention_terms.update',
+    'billing.debt.lost.summary', 'billing.debt.lost.anonymized', 'billing.debt_terms.update', 'settings.retention_terms.update',
     'membership.override.', 'member.archive', 'approval.self',
     'class.type.price', 'catalog.plan.create', 'catalog.plan.update', 'catalog.plan.price_change', 'catalog.price_protection.', 'member.anonymize', 'member.export', 'health.read',
     'staff.password_reset', 'staff.reactivate', 'staff.role', 'staff.rescue', 'staff.unlock', 'staff.permissions', 'settings.approval_policy', 'settings.module.',

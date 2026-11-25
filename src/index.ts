@@ -11,6 +11,7 @@ export * from './time.js';
 export * from './money.js';
 export * from './identity.js';
 export * from './membership.js';
+export * from './aviso-de-aumento.js';
 export * from './billing.js';
 export * from './cash.js';
 export * from './pos.js';
