@@ -40,3 +40,5 @@ export * from './platform.js';
 export * from './owner-alerts.js';
 export * from './training.js';
 export * from './verificar.js';
+// Fase 4 · bloque 4.15: quién debe (`GET /portfolio/debtors`).
+export * from './deudores.js';
